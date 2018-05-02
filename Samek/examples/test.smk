@@ -1,1 +1,1 @@
-print && True False
+print ` hello-everyone!

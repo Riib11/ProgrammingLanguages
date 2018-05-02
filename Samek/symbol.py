@@ -20,7 +20,8 @@ class Symbol:
 primitives = {
     "True"  : Symbol("True",  0, lambda xs: True),
     "False" : Symbol("False", 0, lambda xs: False),
-    "&&"   : Symbol("&&",    2, lambda xs : all(xs)),
+    "&&"    : Symbol("&&",    2, lambda xs : all(xs)),
     "||"    : Symbol("||",    2, lambda xs : any(xs)),
-    "print" : Symbol("print", 1, lambda xs: print(xs[0]))
+    "print" : Symbol("print", 1, lambda xs: print(xs[0])),
+    "`"     : Symbol("`",     1, lambda xs: str(xs[0]))
 }

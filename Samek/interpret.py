@@ -1,36 +1,58 @@
-import symbol
-import term
+from symbol import Symbol, primitives
+from term import Term
 
-names = symbol.primitives
+# get value of outside file
+primitives["get"] = Symbol("get", 1, lambda xs: Interpreter(xs[0]+".smk").interpret())
 
-def readsymbol(s):
-    for name, symbol in names.items():
-        if name == s: return symbol
+class Interpreter:
 
-def interpret(filename):
-    # read lines
-    print("[*] Reading " + filename + " into terms...")
-    terms = []
-    with open(filename, 'r') as file:
-        i = 0
-        for fline in file:
-            fline = fline.split()
-            j = 0
-            syms = []
-            for s in fline:
-                sym = readsymbol(s)
-                if not sym:
-                    print("[!] Unrecognized symbol at line " + str(i) + ", symbol " + str(j) + ": '" + s + "'")
-                    quit()
-                syms.append(sym)
-                j += 0
-            terms.append(term.Term.read(syms))
-            i += 1
+    def __init__(self,filename):
+        self.names = primitives
+        self.filename = filename
 
-    # print("terms: ", terms)
+    def readsymbol(self,s):
+        for name, symbol in self.names.items():
+            if name == s: return symbol
 
-    # interpret terms
-    print("[*] Interpreting terms into behavior...")
-    print("-----------------" + ("-" * len(filename)) + "-----------------")
-    for t in terms:
-        t.evaluate()
+    def interpret(self):
+        # read lines
+        print("[*] Reading " + self.filename + " into symbols...")
+        symbols = []
+        with open(self.filename, 'r') as file:
+            i = 0
+            inquotes = False
+            for fline in file:
+                fline = fline.split()
+
+                j = 0
+                for s in fline:
+                    sym = None
+
+                    if not inquotes:
+                        sym = self.readsymbol(s)
+                        if not sym:
+                            print("[!] Unrecognized symbol at line " + str(i) + ", symbol " + str(j) + ": '" + s + "'")
+                            quit()
+                    # string
+                    else:
+                        sym = Symbol(s, 0, lambda xs: s)
+
+                    j += 1
+                    symbols.append(sym)
+                    if not inquotes:
+                        if sym.symbol == "`":
+                            inquotes = True
+                    else:
+                        inquotes = False
+                i += 1
+
+        # compile symbols into term
+        print("[*] Combining symbols into term...")
+        term = Term.read(symbols)
+
+        print("[$] Resulting term:", term)
+
+        # interpret term
+        print("[*] Interpreting term into behavior...")
+        print("----------------------------------" + ("-" * len(self.filename)))
+        term.evaluate()
