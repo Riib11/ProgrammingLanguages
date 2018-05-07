@@ -1,0 +1,7 @@
+||  set x False
+||  set y True
+||  set z False
+
+&&
+    eva x
+    eva y
