@@ -1,7 +1,7 @@
-||  set x False
-||  set y True
-||  set z False
+~ set variables
+|| :x False
+|| :y True
+|| :z False
 
-&&
-    eva x
-    eva y
+~ evaluate
+|| && #x #y #z

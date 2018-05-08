@@ -4,4 +4,4 @@ Features:
 
 - Booleans
 - Boolean logic (&&,||,!!)
-- Boolean variables (set,eva)
+- Boolean variables (:,#)

@@ -1,0 +1,4 @@
+|| :x get "vars/x"
+|| :y get "vars/y"
+
+    || #x #y

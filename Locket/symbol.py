@@ -25,7 +25,7 @@ def set(vs,k,v):
 
 # symbols
 # print
-Symbol("put", 1, lambda vs, xs : print(xs[0]))
+Symbol("put",   1, lambda vs, xs : print(xs[0]))
 # booleans
 Symbol("True",  0, lambda vs, xs : True)
 Symbol("False", 0, lambda vs, xs : False)
@@ -34,8 +34,8 @@ Symbol("&&",    2, lambda vs, xs : xs[0] and xs[1])
 Symbol("||",    2, lambda vs, xs : xs[0] or xs[1])
 Symbol("!!",    2, lambda vs, xs : not xs[0])
 # variables
-Symbol("eva",  1, lambda vs, xs : eval(vs,xs[0]))
-Symbol("set",   2, lambda vs, xs : set(vs,xs[0],xs[1]))
+Symbol("#",     1, lambda vs, xs : eval(vs,xs[0]))
+Symbol(":",     2, lambda vs, xs : set(vs,xs[0],xs[1]))
 
 def read_string(s):
     if s in symbols_dict:
@@ -44,3 +44,5 @@ def read_string(s):
         return Symbol(s[1:-1], 0, lambda vs, xs : s[1:-1])
     else:
         return Symbol(s, 0, lambda vs, xs : s)
+
+reserveds = [ "&&", "||", "!!", "#", ":" ]
