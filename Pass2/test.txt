@@ -1,9 +1,4 @@
-nat_ind:
-    (P : nat → Prop) →
-    (* : P 0) →
-    (* : (n : nat) -> (* : P n) -> (* : P (S n))) →
-    (n : nat) →
-    (* : P n).
+
 
 Now consider
 
