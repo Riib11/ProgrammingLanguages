@@ -1064,6 +1064,12 @@ body .markdown-body
 →, ↦, ↔</p>
 <p>logic
 ∧, ∨, ∀, ∃</p>
+<p>special</p>
+<h1 id="_1"><a class="headerlink" href="#_1" title="Permanent link"></a></h1>
+<h2 id="notes-notation">Notes Notation<a class="headerlink" href="#notes-notation" title="Permanent link"></a></h2>
+<p><code>#</code> specifies the rest of a line to be ignored programatically, in a code block.
+    - <code>#--&gt;</code> signifies that the following comment is supposed to be the debug output of the code on the left of the <code>#--&gt;</code>.
+    - <code>#:</code> signifies that the following comment is supposed to be the signature of the term on the left</p>
 <h2 id="types">Types<a class="headerlink" href="#types" title="Permanent link"></a></h2>
 <h3 id="type-the-type">Type, the Type<a class="headerlink" href="#type-the-type" title="Permanent link"></a></h3>
 <div class="codehilite"><pre>Axiom Type : (Type1 : (Type2 ...))
@@ -1100,8 +1106,8 @@ Pattern &quot;x = y&quot; := Equal x y
 
 <h3 id="negative-types-functions">Negative Types (Functions)<a class="headerlink" href="#negative-types-functions" title="Permanent link"></a></h3>
 <p>The negative types are characterized having elimination rules. You can <em>use</em> a negative type by <em>applying</em> it. You can <em>construct</em> a negative type by specifying the result of its application.</p>
-<p>For example, <code>Id {A : Type} : A → A</code> is a negative type with the elimination rule <code>Id x ↦ x</code>. <code>Id</code> is defined like so:</p>
-<div class="codehilite"><pre>Define Id {A : Type} : A → A := x ↦ x
+<p>For example, <code>id {A : Type} : A → A</code> is a negative type with the elimination rule <code>id x ↦ x</code>. <code>id</code> for <code>Type</code>s is defined like so:</p>
+<div class="codehilite"><pre>Define id {A : Type} : A → A := x ↦ x
 </pre></div>
 
 
@@ -1155,10 +1161,10 @@ Pattern &quot;A + B&quot; := Sum A B
 | intro : A → B → Product A B
 
 Pattern &quot;A * B&quot;
-    where (A B : Type)
+    (A B : Type)
     := Product A B
 Pattern &quot;( a , b )&quot;
-    where (A B : Type) (a : A) (b : B)
+    (A B : Type) (a : A) (b : B)
     := intro a b
 </pre></div>
 
@@ -1211,17 +1217,17 @@ Axiom Nat.Induction :
 <p>expands to</p>
 <div class="codehilite"><pre>Axiom Bool : Set
 Axiom Bool.constructor : Unit + Unit
+Define Bool.true  := fst Bool.constructor
+Define Bool.false := snd Bool.constructor
 Axiom Bool.match : ∀ (b:Bool)
-    , b = fst Bool.constructor
-    ∨ b = snd Bool.constructor
-Axiom Bool.true  : fst Bool.constructor
-Axiom Bool.false : snd Bool.constructor
+    , b = Bool.true
+    ∨ b = Bool.false
 </pre></div>
 
 
-<p>The final <code>match</code> property is needed for performing <code>match</code>s on bools, derived from their only specified constructors. From previously, another example</p>
+<p>The <code>match</code> property is needed for performing <code>match</code>s on bools, derived from their only specified constructors. From previously, another example</p>
 <div class="codehilite"><pre>Axiom Equal {A : Type} : A → A → Prop :=
-| reflexive : ∀ (x : A), Equal x x
+| reflexivity : ∀ (x : A), Equal x x
 </pre></div>
 
 
@@ -1230,9 +1236,7 @@ Axiom Bool.false : snd Bool.constructor
     ∀ (A:Type),
     A → A → Prop
 
-Axiom Equal.reflexive :
-    ∀ (A:Type) (x:A),
-    Equal A x x
+Axiom Equal.reflexivity {A:Type} : ∀ (a:A), Equal A x x
 </pre></div>
 
 
@@ -1246,31 +1250,141 @@ Axiom Equal.reflexive :
 
 <p>fully expands to</p>
 <div class="codehilite"><pre>Axiom Nat : Set
-Axiom
+Axiom Nat.constructor : Unit + (Unit → Unit)
+Define Nat.O := fst Nat.constructor
+Define Nat.S := snd Nat.constructor
+Axiom Nat.match : ∀ (n:Nat)
+    , n = Nat.O
+    ∨ ∃ (n&#39;:Nat), n = Nat.S n&#39;
+Axiom Nat.Induction : ∀ (P : Nat → Nat) (n : Nat)
+    , P Nat.O ∧ P n
+    → P Nat.S n
+    → ∀ n, P n
 </pre></div>
 
 
-<h6 id="define">Define:<a class="headerlink" href="#define" title="Permanent link"></a></h6>
-<h6 id="pattern">Pattern:<a class="headerlink" href="#pattern" title="Permanent link"></a></h6>
+<h6 id="define">Define<a class="headerlink" href="#define" title="Permanent link"></a></h6>
+<h6 id="pattern">Pattern<a class="headerlink" href="#pattern" title="Permanent link"></a></h6>
+<h6 id="check">Check<a class="headerlink" href="#check" title="Permanent link"></a></h6>
+<h6 id="execute">Execute<a class="headerlink" href="#execute" title="Permanent link"></a></h6>
 <h2 id="type-judgements">Type Judgements<a class="headerlink" href="#type-judgements" title="Permanent link"></a></h2>
 <p>A type judgement is of the form</p>
 <div class="codehilite"><pre>term : type
 </pre></div>
 
 
-<p>where the <code>:</code> importantly seperates them.</p>
+<p>where the <code>:</code> importantly seperates them. A type judgement asserts that the <code>term</code> has the type <code>type</code>.</p>
 <h3 id="term">Term<a class="headerlink" href="#term" title="Permanent link"></a></h3>
 <p>A term is a name that inhabits a type.</p>
 <h3 id="type">Type<a class="headerlink" href="#type" title="Permanent link"></a></h3>
 <p>A type is a name the provides structure and rules for its terms.</p>
-<h3 id="signatures">Signatures<a class="headerlink" href="#signatures" title="Permanent link"></a></h3>
-<p>A signature is a construction of types using type names, parameters, and function arrows.</p>
-<h4 id="explicits">Explicits<a class="headerlink" href="#explicits" title="Permanent link"></a></h4>
-<p>Signatures</p>
-<h4 id="implicits">Implicits<a class="headerlink" href="#implicits" title="Permanent link"></a></h4>
+<h3 id="signature">Signature<a class="headerlink" href="#signature" title="Permanent link"></a></h3>
+<p>A signature is a construction of types using type names, parameters, and function arrows. For example, if we take</p>
+<div class="codehilite"><pre>Axiom A : B → C → Type :=
+| intro b c : A b c
+Axiom b : B
+Axiom c : C
+</pre></div>
+
+
+<p>and form</p>
+<div class="codehilite"><pre>Define a := A.intro b c
+</pre></div>
+
+
+<p>Then we can correctly judge that</p>
+<div class="codehilite"><pre>a : A
+</pre></div>
+
+
+<p>More simply, we can just</p>
+<div class="codehilite"><pre>Check a #--&gt; a : A
+</pre></div>
+
+
+<h4 id="variables-in-sigantures">Variables in Sigantures<a class="headerlink" href="#variables-in-sigantures" title="Permanent link"></a></h4>
+<p>In signatures, you may want to refer to the same value more than once. To do this, there are a few special ways to include variables in signatures. They are detailed in the next two sub-sections, but below is a comprehensive list:</p>
+<div class="codehilite"><pre># Explicit parameters come before the colon,
+# and if types are specified, parentheses surround inidividual
+# parameters, or optionally parameters of the same type can
+# be seperated by spaces in the same parenthetic group.
+
+Axiom f (x : Real) : Real     #: Real → Real
+Axiom g (x y z : Real) : Real #: Real → Real → Real → Real
+
+# Can also be done like this
+
+Define add_one : ∀ (x:Nat), Nat := x ↦ S x #: Nat → Nat
+Pattern &quot;x + 1&quot; (x:Nat) := add_one
+
+# Implicit parameters come before the colon
+# and also before any explicit parameters.
+# Scopes can have parameters that are inherited
+# by the enscoped names.
+
+Scope {X : Set} (f : Real → X) (g : X → Real) {
+    Define compose  := (x : Real) ↦ g (f x)
+    Pattern &quot;g * f&quot; := compose g f
+    #: {X : Set} (f : Real → X) (g : X → Real)
+}
+
+Define h := g * f #: Real → Real
+
+# Can also do this neat trick
+
+# Scoped names can inherit types too
+
+Axiom Bool : Type := | true | false
+
+Scope Bool (b:Bool) : Bool {
+    # the first &#39;Bool&#39; scopes inside the name
+    # the &#39;b:Bool&#39; variable indicates that names
+    # inside this scope have this first explicit variable
+    # the second &#39;Bool&#39; indicates the names inside
+    # this scope have signatures that end with Bool
+    Define not := match b | false | true #: Bool → Bool
+}
+</pre></div>
+
+
+<h5 id="explicits">Explicits<a class="headerlink" href="#explicits" title="Permanent link"></a></h5>
+<p>You may write explicit variables either before or after the colon, but each way has a unique syntax. If the types of the variables are specified, parentheses are required around the variable names and their types.</p>
+<p>Before the colon (parameter syntax):</p>
+<div class="codehilite"><pre>Define f (a b c : Nat) : Nat := a * b + c * d
+#: Nat → Nat → Nat → Nat
+</pre></div>
+
+
+<p>After the colon (&lsquo;forall&rsquo; syntax):</p>
+<div class="codehilite"><pre>Axiom f : ∀ (a b c d: Nat) : Nat := a b c d ↦ a * b + c * d
+#: Nat → Nat → Nat → Nat
+</pre></div>
+
+
+<p>The difference netween these, as you may notice, is that in the &lsquo;forall&rsquo; syntax the right side of the <code>:=</code> must example have the type specified by the right side of the colon of the type judgement, whereas in the parameter syntax the variables didn&rsquo;t appear on the right side of the colon for judging <code>f</code>, so the <code>a b c d</code> didn&rsquo;t need to be repeated, and just the resulting <code>Nat</code> value of <code>a * b + c * d</code> needed to be stated.</p>
+<p>Because of this, the parameter syntax is a little more flexible, but the &lsquo;forall&rsquo; syntax can be more flavorful and expressive sometimes, as well as allowing outer types to contain variables, such as in</p>
+<div class="codehilite"><pre>Axiom liebniz (n m: Nat) : n = m → ( ∀ (P:Nat→Nat), P n → P m )
+Define props_for_one := liebniz 1 1 (Equal.reflexivity 1)
+#: ∀ (P:Nat→Nat), P 1 → P 1
+</pre></div>
+
+
+<h5 id="implicits">Implicits<a class="headerlink" href="#implicits" title="Permanent link"></a></h5>
+<p>You may only write implicit variables before the colon, before any expicit variables. Implicit variables are unique in that they are tagged to require inference when they are used. For example,</p>
+<div class="codehilite"><pre>Define id {A:Type} (a:A) := a #: A → A
+</pre></div>
+
+
+<p>The <code>{A:Type}</code> is not included in the signature of the name <code>id</code>, since the parameter is not to be given when using the name. There is a little flexibility to this though. You can specifically pass implict parameters like so:</p>
+<div class="codehilite"><pre>Compute id {Set} 1 #--&gt; 1
+</pre></div>
+
+
+<p>This can be useful if there are times when you may be using symbols for multiple things (overloading), which is fine but required explicit typing sometimes.</p>
+<h5 id="exists-statement">Exists Statement<a class="headerlink" href="#exists-statement" title="Permanent link"></a></h5>
 <h3 id="writing-names">Writing Names<a class="headerlink" href="#writing-names" title="Permanent link"></a></h3>
 <p>To use a name, first type the name, then supply as many parameters as you want like so:</p>
-<div class="codehilite"><pre>name param1 param2 param3 ...
+<div class="codehilite"><pre>name var1 var2 var3 ...
 </pre></div>
 
 

@@ -18,7 +18,9 @@ special
 
 ## Notes Notation
 
-`# ` specifies the rest of a line to be ignored programatically, in a code block. Additionally, `#->` signifies the the following comment is supposed to be the debug output of the code on the left of the `#->`.
+`# ` specifies the rest of a line to be ignored programatically, in a code block.
+    - `#-->` signifies that the following comment is supposed to be the debug output of the code on the left of the `#-->`.
+    - `#:` signifies that the following comment is supposed to be the signature of the term on the left
 
 ## Types
 
@@ -57,9 +59,9 @@ An example `Bool : Set`, is a set of two elements, `true` and `false`. It's very
 
 The negative types are characterized having elimination rules. You can *use* a negative type by *applying* it. You can *construct* a negative type by specifying the result of its application.
 
-For example, `Id {A : Type} : A → A` is a negative type with the elimination rule `Id x ↦ x`. `Id` is defined like so:
+For example, `id {A : Type} : A → A` is a negative type with the elimination rule `id x ↦ x`. `id` is defined like so:
 
-    Define Id {A : Type} : A → A := x ↦ x
+    Define id {A : Type} : A → A := x ↦ x
 
 ### Positive Types
 
@@ -119,10 +121,10 @@ A dependent product is a function `b : ∀ x:A, B(x)` where `B : A → Type`. A 
     | intro : A → B → Product A B
 
     Pattern "A * B"
-        where (A B : Type)
+        (A B : Type)
         := Product A B
     Pattern "( a , b )"
-        where (A B : Type) (a : A) (b : B)
+        (A B : Type) (a : A) (b : B)
         := intro a b
 
 A place where you may have scene this is with `Prop`'s `And` conjunction. You could say there's a structural equivelance between `A ∧ B` and `A * B`.
@@ -184,7 +186,7 @@ expands to
 The `match` property is needed for performing `match`s on bools, derived from their only specified constructors. From previously, another example
 
     Axiom Equal {A : Type} : A → A → Prop :=
-    | reflexive : ∀ (x : A), Equal x x
+    | reflexivity : ∀ (x : A), Equal x x
 
 fully expands to
 
@@ -192,9 +194,7 @@ fully expands to
         ∀ (A:Type),
         A → A → Prop
     
-    Axiom Equal.reflexive :
-        ∀ (A:Type) (x:A),
-        Equal A x x
+    Axiom Equal.reflexivity {A:Type} : ∀ (a:A), Equal A x x
 
 ###### Inductive
 
@@ -258,19 +258,108 @@ Then we can correctly judge that
 
 More simply, we can just
 
-    Check a #-> a : A
+    Check a #--> a : A
 
-#### Explicits
+#### Variables in Sigantures
 
-Signatures
+In signatures, you may want to refer to the same value more than once. To do this, there are a few special ways to include variables in signatures. They are detailed in the next two sub-sections, but below is a comprehensive list:
+    
+    # Explicit parameters come before the colon,
+    # and if types are specified, parentheses surround inidividual
+    # parameters, or optionally parameters of the same type can
+    # be seperated by spaces in the same parenthetic group.
 
-#### Implicits
+    Axiom f (x : Real) : Real     #: Real → Real
+    Axiom g (x y z : Real) : Real #: Real → Real → Real → Real
+
+    # Can also be done like this
+
+    Define add_one : ∀ (x:Nat), Nat := x ↦ S x #: Nat → Nat
+    Pattern "x + 1" (x:Nat) := add_one
+
+    # Implicit parameters come before the colon
+    # and also before any explicit parameters.
+    # Scopes can have parameters that are inherited
+    # by the enscoped names.
+
+    Scope {X : Set} (f : Real → X) (g : X → Real) {
+        Define compose  := (x : Real) ↦ g (f x)
+        Pattern "g * f" := compose g f
+        #: {X : Set} (f : Real → X) (g : X → Real)
+    }
+
+    Define h := g * f #: Real → Real
+
+    # Can also do this neat trick
+
+    # Scoped names can inherit types too
+
+    Axiom Bool : Type := | true | false
+
+    Scope Bool (b:Bool) : Bool {
+        # the first 'Bool' scopes inside the name
+        # the 'b:Bool' variable indicates that names
+        # inside this scope have this first explicit variable
+        # the second 'Bool' indicates the names inside
+        # this scope have signatures that end with Bool
+        Define not := match b | false | true #: Bool → Bool
+    }
+
+##### Explicits
+
+You may write explicit variables either before or after the colon, but each way has a unique syntax. If the types of the variables are specified, parentheses are required around the variable names and their types.
+
+Before the colon (parameter syntax):
+
+    Define f (a b c : Nat) : Nat := a * b + c * d
+    #: Nat → Nat → Nat → Nat
+
+After the colon ('forall' syntax):
+
+    Axiom f : ∀ (a b c d: Nat) : Nat := a b c d ↦ a * b + c * d
+    #: Nat → Nat → Nat → Nat
+
+The difference netween these, as you may notice, is that in the 'forall' syntax the right side of the `:=` must example have the type specified by the right side of the colon of the type judgement, whereas in the parameter syntax the variables didn't appear on the right side of the colon for judging `f`, so the `a b c d` didn't need to be repeated, and just the resulting `Nat` value of `a * b + c * d` needed to be stated.
+
+Because of this, the parameter syntax is a little more flexible, but the 'forall' syntax can be more flavorful and expressive sometimes, as well as allowing outer types to contain variables, such as in
+
+    Axiom liebniz (n m: Nat) : n = m → ( ∀ (P:Nat→Nat), P n → P m )
+    Define props_for_one := liebniz 1 1 (Equal.reflexivity 1)
+    #: ∀ (P:Nat→Nat), P 1 → P 1
+
+##### Implicits
+
+You may only write implicit variables before the colon, before any expicit variables. Implicit variables are unique in that they are tagged to require inference when they are used. For example,
+
+    Define id {A:Type} (a:A) := a #: A → A
+
+The `{A:Type}` is not included in the signature of the name `id`, since the parameter is not to be given when using the name. There is a little flexibility to this though. You can specifically pass implict parameters like so:
+
+    Compute id {Set} 1 #--> 1
+
+This can be useful if there are times when you may be using symbols for multiple things (overloading), which is fine but required explicit typing sometimes.
+
+##### Exists Statement
+
+In signatures, you can say that something has the type `∃ (x:A), Px` where `x` is a variable name, `A` is a type, and the `Px` is a `Prop` about `x`. For example you might say
+
+    Axiom nat_has_no_maximum:
+        ∀ (n:Nat), ∃ (m:Nat), n < m
+
+This is really just notation introduced by the `Inhabited` type:
+
+    Axiom Inhabited {A:Type} (P:A→Prop) :=
+    | intro {A:Type} (x:A) (A→Prop) (P x) : Inhabited P
+
+    Pattern "∃ x, Px"
+        {A:Type} (x:A) (Px:Prop)
+        := "Inhabited Px"
 
 ### Writing Names
 
 To use a name, first type the name, then supply as many parameters as you want like so:
 
-    name param1 param2 param3 ...
+    name var1 var2 var3 ...
 
 ## Values
 ### Evaluation (Beta-Reduction)
