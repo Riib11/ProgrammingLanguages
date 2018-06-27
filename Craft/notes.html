@@ -1057,19 +1057,38 @@ body .markdown-body
 .codehilite .gc{color:#999;background-color:#EAF2F5}
 </style><title>notes</title></head><body><article class="markdown-body"><h1 id="craft">Craft<a class="headerlink" href="#craft" title="Permanent link"></a></h1>
 <p>A dependently-type programming language with rewrite-based syntax designed to be a simple and single.</p>
+<h2 id="common-terms">Common Terms<a class="headerlink" href="#common-terms" title="Permanent link"></a></h2>
+<ul>
+<li>
+<p><strong>Axiom</strong>: When you are using <code>Axiom</code> to introduce a term, you are just <em>asserting</em> that the (now referencable) term has the specified type and nothing more.</p>
+</li>
+<li>
+<p><strong>Build</strong>: When you are using <code>Define</code> to introduce a term, you are <em>building</em> a term of the correct type using other terms.</p>
+</li>
+<li>
+<p><strong>Construct</strong>: When you are building a term of, say, type <code>X</code> using one of the constructors specified when you defined <code>X</code>, only then are you <em>constructing</em> a term of <code>X</code>.</p>
+</li>
+</ul>
 <h2 id="special-symbols">Special Symbols<a class="headerlink" href="#special-symbols" title="Permanent link"></a></h2>
 <p>syntax
-:,=,≠,|,</p>
+<code>:</code>,<code>=</code>,<code>≠</code>,<code>|</code>,</p>
 <p>arrows
-→, ↦, ↔</p>
+<code>→</code>, <code>↦</code>, <code>↔</code></p>
 <p>logic
-∧, ∨, ∀, ∃</p>
-<p>special</p>
-<h1 id="_1"><a class="headerlink" href="#_1" title="Permanent link"></a></h1>
+<code>∧</code>, <code>∨</code>, <code>∀</code>, <code>∃</code></p>
+<p>special
+<code>#</code></p>
 <h2 id="notes-notation">Notes Notation<a class="headerlink" href="#notes-notation" title="Permanent link"></a></h2>
-<p><code>#</code> specifies the rest of a line to be ignored programatically, in a code block.
-    - <code>#--&gt;</code> signifies that the following comment is supposed to be the debug output of the code on the left of the <code>#--&gt;</code>.
-    - <code>#:</code> signifies that the following comment is supposed to be the signature of the term on the left</p>
+<p><code>#</code> specifies the rest of a line to be ignored programatically, in a code block.</p>
+<ul>
+<li>
+<p><code>#&gt;</code> signifies that the following comment is supposed to be the debug output of the code on the left of the <code>#&gt;</code>.</p>
+</li>
+<li>
+<p><code>#:</code> signifies that the following comment is supposed to be the signature of the term on the left.</p>
+</li>
+</ul>
+<p><code>###</code>&hellip;<code>###</code> specifies a spanning comment section (can be multiline).</p>
 <h2 id="types">Types<a class="headerlink" href="#types" title="Permanent link"></a></h2>
 <h3 id="type-the-type">Type, the Type<a class="headerlink" href="#type-the-type" title="Permanent link"></a></h3>
 <div class="codehilite"><pre>Axiom Type : (Type1 : (Type2 ...))
@@ -1091,22 +1110,9 @@ Pattern &quot;x = y&quot; := Equal x y
 </pre></div>
 
 
-<h3 id="set-type-predicative">Set Type (Predicative)<a class="headerlink" href="#set-type-predicative" title="Permanent link"></a></h3>
-<div class="codehilite"><pre>Axiom Set  : Type
-</pre></div>
-
-
-<p>The <code>Set</code> type is predicative and has proof-relevant terms (possible to have <code>∃ s1 s2:S, s1≠s2</code>). Sets are useful for computation.</p>
-<p>An example <code>Bool : Set</code>, is a set of two elements, <code>true</code> and <code>false</code>. It&rsquo;s very important to keep these distinct for computation! <code>Bool</code> is defined like so:</p>
-<div class="codehilite"><pre>Axiom Bool : Set :=
-| true  : Bool
-| false : Bool
-</pre></div>
-
-
 <h3 id="negative-types-functions">Negative Types (Functions)<a class="headerlink" href="#negative-types-functions" title="Permanent link"></a></h3>
 <p>The negative types are characterized having elimination rules. You can <em>use</em> a negative type by <em>applying</em> it. You can <em>construct</em> a negative type by specifying the result of its application.</p>
-<p>For example, <code>id {A : Type} : A → A</code> is a negative type with the elimination rule <code>id x ↦ x</code>. <code>id</code> for <code>Type</code>s is defined like so:</p>
+<p>For example, <code>id {A : Type} : A → A</code> is a negative type with the elimination rule <code>id x ↦ x</code>. <code>id</code> is defined like so:</p>
 <div class="codehilite"><pre>Define id {A : Type} : A → A := x ↦ x
 </pre></div>
 
@@ -1116,6 +1122,100 @@ Pattern &quot;x = y&quot; := Equal x y
 <p>For example, <code>And : Prop → Prop → Prop</code> is a positive type with the constructor <code>And.intro : ∀ A B, And A B</code>. <code>And</code> is defined like so:</p>
 <div class="codehilite"><pre>Axiom And : Prop → Prop → Prop :=
 | intro : ∀ (A B : Prop), And A B
+</pre></div>
+
+
+<p>You know its a positive type because you defined it using the <code>|</code> constructor syntax, where each <code>|</code> indicates the start of a constructor. Positive types come with a few special features automatically:</p>
+<h5 id="constuctor"><code>*.constuctor</code><a class="headerlink" href="#constuctor" title="Permanent link"></a></h5>
+<p>This axiom is defined along with your type, and you generally never have to use it directly. It&rsquo;s a type sum of the constructors that you defined by name using the <code>|</code>s. For example, if you defined a type</p>
+<div class="codehilite"><pre>Axiom X : Set :=
+| A : X
+| B : X → X
+| C : X → X → X
+</pre></div>
+
+
+<p>then you get</p>
+<div class="codehilite"><pre>Axiom X.constructor : (Unit) * (Unit → Unit) * (Unit → Unit → Unit)
+</pre></div>
+
+
+<p><code>Unit</code> is a kind of building block for positive types in this way. Also automatically defined with <code>X</code> would be the shorthands</p>
+<div class="codehilite"><pre>Scope Open X
+Define A := fst (fst constructor)
+Define B := snd (fst constructor)
+Define C := snd constructor
+</pre></div>
+
+
+<p>as the constructor&rsquo;s type expression associatively expands (left) to</p>
+<div class="codehilite"><pre>((Unit) + (Unit → Unit)) + (Unit → Unit → Unit)
+</pre></div>
+
+
+<h5 id="eqaulity"><code>*.eqaulity</code><a class="headerlink" href="#eqaulity" title="Permanent link"></a></h5>
+<p>Equality for positive types is predicated on constructive nestequality, especially for dependent types. Equality is already built-in independently as</p>
+<div class="codehilite"><pre>Axiom Equal {A : Type} : A → A → Prop :=
+| reflexivity : ∀ (x : A), Equal x x
+</pre></div>
+
+
+<p>So <code>*.nestequality</code> implements a method for constructing equality for positive types. For our example type <code>X</code>, we get</p>
+<div class="codehilite"><pre>Scope Open X
+Axiom nestequality
+    : ∀ (x1 x2 x3 x4 : X)
+    , A = A
+    ∧ x1 = x2 → B x1 = Bx2
+    ∧ x1 = x3 → x2 = x4 → C x1 x2 = C x3 x4
+</pre></div>
+
+
+<p>Using the keyword <code>nestequality</code> you can build an equality that automatically extracts the right part of the and clause in <code>*.nestequality</code> and applies your arguments to it (in order). For example,</p>
+<div class="codehilite"><pre>Scope Open B
+Define test : C A A = C A A :=
+    nestequality r r 
+    where r : A = A := nestequality A
+</pre></div>
+
+
+<p>This may seem like a roundabout way to construct equality, and it is, sort of, but it can beuseful sometimes. For example, it allows you to explicitly extract the terms you need to provide to construct the higher-level equality that you want.</p>
+<p><em>Note</em>: <code>nestequality</code> is in an overloaded reference in the third line of the example above. How is it handled? Well, <code>X.nestequality</code> has the lengthy type specified slightly higher above doesn&rsquo;t have the type <code>A = A → A = A → C A A = C A A</code>, but just plain <code>nestequality</code> can, so it is used!</p>
+<h5 id="match"><code>*.match</code><a class="headerlink" href="#match" title="Permanent link"></a></h5>
+<p>To take advantage of <code>*.constructor</code> in the most obvious way, you can pattern match with it, and thats exactly what <code>*.match</code> implements for each positive type individually. So, for our type <code>X</code> from earlier, you get</p>
+<div class="codehilite"><pre>Scope Open X
+Axiom match : ∀ (x:X)
+    , x = A
+    ∨ x = B
+    ∨ x = C
+</pre></div>
+
+
+<p>In other words, if you have an <code>x:X</code>, you know it had to be constructed using one of <code>X</code>&lsquo;s constructors. If you somehow assume via axiom that there&rsquo;s an <code>x:X</code> that doesn&rsquo;t follow thing rule, then you&rsquo;ve got yourself a contradiction so don&rsquo;t do that! There&rsquo;s a reason its set up this way, trust me. <code>*.match</code> is used by the <code>match</code> keyword, which is explained in the <a href="#keywords-special-symbols">Keywords and Special Symbols</a> section.</p>
+<h5 id="discriminate"><code>*.discriminate</code><a class="headerlink" href="#discriminate" title="Permanent link"></a></h5>
+<p>Combining the logic of <code>*.equality</code> and <code>*.match</code>, you get the extremeley useful constructor discrimination rule. This rule allows you to draw a contradiction from any expression that asserts the <code>*.equality</code> of two terms of a positive type when the terms are no constructred with the same constructor. Formally, for our type <code>X</code> again,</p>
+<div class="codehilite"><pre>Scope Open X
+Axiom discriminate
+    : ∀ (x y x1 x2 : X)
+    , A ≠ B x1
+    ∧ A ≠ C x1 x2
+    ∧ B x ≠ A
+    ∧ B x ≠ C x1 x2
+    ∧ C x y ≠ A
+    ∧ C x y ≠ B x1
+</pre></div>
+
+
+<p>which may seem like a lot at first, but its actually extremeely structured. It&rsquo;s constructred from the possible combinations of the constructors, that&rsquo;s all. Take a minute to look it over. Using the <code>discriminate</code> keyword will search through the relevant <code>*.discriminate</code> property and produced the counterexample you&rsquo;re looking for, as described in the <a href="#keywords-special-symbols">Keywords and Special Symbols</a> section.</p>
+<h3 id="set-type-predicative">Set Type (Predicative)<a class="headerlink" href="#set-type-predicative" title="Permanent link"></a></h3>
+<div class="codehilite"><pre>Axiom Set : Type
+</pre></div>
+
+
+<p>The <code>Set</code> type is a positive type that is predicative and has proof-relevant terms (possible to have <code>∃ s1 s2:S, s1≠s2</code>). Sets are useful for computation.</p>
+<p>An example <code>Bool : Set</code>, is a set of two elements, <code>true</code> and <code>false</code>. It&rsquo;s very important to keep these distinct for computation! <code>Bool</code> is defined like so:</p>
+<div class="codehilite"><pre>Axiom Bool : Set :=
+| true  : Bool
+| false : Bool
 </pre></div>
 
 
@@ -1154,7 +1254,6 @@ Pattern &quot;A + B&quot; := Sum A B
 
 <p>A place where you may have scene this is with <code>Prop</code>&lsquo;s <code>Or</code> disjunction. You could say there&rsquo;s a structural equivelance between <code>A ∨ B</code> and <code>A + B</code>.</p>
 <p>Some useful functions for dealing with sums:</p>
-<p>TODO</p>
 <h3 id="dependent-type-product">Dependent Type Product<a class="headerlink" href="#dependent-type-product" title="Permanent link"></a></h3>
 <p>A dependent product is a function <code>b : ∀ x:A, B(x)</code> where <code>B : A → Type</code>. A way to think about this is the cartesian product of types. Dependent sums are defined like so:</p>
 <div class="codehilite"><pre>Axiom Product : ∀ (A B : Type), Type :=
@@ -1163,7 +1262,7 @@ Pattern &quot;A + B&quot; := Sum A B
 Pattern &quot;A * B&quot;
     (A B : Type)
     := Product A B
-Pattern &quot;( a , b )&quot;
+Pattern &quot;a , b&quot;
     (A B : Type) (a : A) (b : B)
     := intro a b
 </pre></div>
@@ -1195,11 +1294,11 @@ Axiom Nat.Induction :
 </pre></div>
 
 
-<h2 id="syntax">Syntax<a class="headerlink" href="#syntax" title="Permanent link"></a></h2>
+<h2 id="vocabulary">Vocabulary<a class="headerlink" href="#vocabulary" title="Permanent link"></a></h2>
 <h3 id="headers">Headers<a class="headerlink" href="#headers" title="Permanent link"></a></h3>
-<p>Every sentence starts with a header (although it may be implicit). Some example headers are:</p>
-<h6 id="axiom">Axiom<a class="headerlink" href="#axiom" title="Permanent link"></a></h6>
-<p><code>Axiom</code> specifies a new term of an existing type. Note that this term will be considered unique from any other previously-specified terms of the same type. The name &ldquo;Axiom&rdquo; reflects that this header signifies a new assumption. For example, if you have previously defined</p>
+<p>Every sentence starts with a header (although it may be implicit). All headers are capitalized. Some example headers are:</p>
+<h4 id="axiom"><code>Axiom</code><a class="headerlink" href="#axiom" title="Permanent link"></a></h4>
+<p>The <code>Axiom</code> header specifies a new term of an existing type. Note that this term will be considered unique from any other previously-specified terms of the same type. The name &ldquo;Axiom&rdquo; reflects that this header signifies a new assumption. For example, if you have previously defined</p>
 <div class="codehilite"><pre>Axiom Bool : Set := | true | false
 </pre></div>
 
@@ -1216,7 +1315,7 @@ Axiom Nat.Induction :
 
 <p>expands to</p>
 <div class="codehilite"><pre>Axiom Bool : Set
-Axiom Bool.constructor : Unit + Unit
+Axiom Bool.constructor : Unit * Unit
 Define Bool.true  := fst Bool.constructor
 Define Bool.false := snd Bool.constructor
 Axiom Bool.match : ∀ (b:Bool)
@@ -1240,7 +1339,7 @@ Axiom Equal.reflexivity {A:Type} : ∀ (a:A), Equal A x x
 </pre></div>
 
 
-<h6 id="inductive">Inductive<a class="headerlink" href="#inductive" title="Permanent link"></a></h6>
+<h4 id="inductive"><code>Inductive</code><a class="headerlink" href="#inductive" title="Permanent link"></a></h4>
 <p>The <code>Inductive</code> header indicates that the following type structure has the special inductive property. So the definition of <code>Nat</code> like this:</p>
 <div class="codehilite"><pre>Inductive Nat : Set :=
 | O : Nat
@@ -1250,12 +1349,12 @@ Axiom Equal.reflexivity {A:Type} : ∀ (a:A), Equal A x x
 
 <p>fully expands to</p>
 <div class="codehilite"><pre>Axiom Nat : Set
-Axiom Nat.constructor : Unit + (Unit → Unit)
+Axiom Nat.constructor : Unit * (Unit → Unit)
 Define Nat.O := fst Nat.constructor
 Define Nat.S := snd Nat.constructor
 Axiom Nat.match : ∀ (n:Nat)
     , n = Nat.O
-    ∨ ∃ (n&#39;:Nat), n = Nat.S n&#39;
+    ∨ ∃ (m:Nat), n = Nat.S m
 Axiom Nat.Induction : ∀ (P : Nat → Nat) (n : Nat)
     , P Nat.O ∧ P n
     → P Nat.S n
@@ -1263,10 +1362,256 @@ Axiom Nat.Induction : ∀ (P : Nat → Nat) (n : Nat)
 </pre></div>
 
 
-<h6 id="define">Define<a class="headerlink" href="#define" title="Permanent link"></a></h6>
-<h6 id="pattern">Pattern<a class="headerlink" href="#pattern" title="Permanent link"></a></h6>
-<h6 id="check">Check<a class="headerlink" href="#check" title="Permanent link"></a></h6>
-<h6 id="execute">Execute<a class="headerlink" href="#execute" title="Permanent link"></a></h6>
+<h4 id="define"><code>Define</code><a class="headerlink" href="#define" title="Permanent link"></a></h4>
+<p>The <code>Define</code> header creates a new name that is binded to a term that is constructed using other terms. Note that, differently from <code>Axiom</code>, the binded term is not necessarily unique from any other terms binded by other <code>Defines</code>. For example,</p>
+<div class="codehilite"><pre>Define x : Nat := 1
+Define y : Nat := 1
+
+Define x_eq_y : x = y
+    := Equal.reflexivity 1
+</pre></div>
+
+
+<p>If you run the checks you&rsquo;ll get these</p>
+<div class="codehilite"><pre>Check x_eq_y #: x = y
+PostCheck x_eq_y #: 1 = 1
+</pre></div>
+
+
+<p><code>PostCheck</code> reflects what will actually be scene when the code is run, as only in the type-checking phase that <code>Check</code> operates in are names not substituted by their bindings.</p>
+<h4 id="pattern"><code>Pattern</code><a class="headerlink" href="#pattern" title="Permanent link"></a></h4>
+<p>The <code>Pattern</code> header is a super useful and versatile macro-creation device. Don&rsquo;t worry about infixes or spaces any longer! Just a simple pattern can take care of almost any notational specialty you&rsquo;d like to include. The notation of <code>Pattern</code> starts with the raw pattern in <code>"</code>s, followed by variables included in the pattern (if any), followed by a <code>:</code> and signature (optional), and finally ended with a <code>:=</code> and binding. The binding may be either a term, or string (using <code>"</code>s). For example, here&rsquo;s a neat way to type playing cards and then reference them.</p>
+<div class="codehilite"><pre>Axiom Suite : Set :=
+    | Clubs | Spades | Hearts | Diamonds
+
+Axiom Rank  : Set :=
+    | Ace   | Two  | Three | Four | Five  | Six  | Seven 
+    | Eight | Nine | Ten   | Jack | Queen | King
+
+Axiom Card : Set :=
+    | intro : Suite → Rank → Card
+
+Pattern &quot;rank of suite&quot;
+    (rank:Rank) (suite:Suite) : Card
+    := Card.intro suite rank
+
+# Usage:
+Check Two of Spades #&gt; Card
+</pre></div>
+
+
+<p>Additionally, with the easy macro-ing with string outputs, you can quickly implement infixes. For example, with a simple <code>+</code> operator infix:</p>
+<div class="codehilite"><pre>Define + := Nat.add
+Pattern &quot;n + m&quot; (n m : Nat) := &quot;+ n m&quot;
+</pre></div>
+
+
+<p>This may be eventually implemented as a vocabulary command (like in coq), in some way like</p>
+<div class="codehilite"><pre>Define + := Nat.add
+Infix 1, + # directly tranlates to the Pattern approach above
+</pre></div>
+
+
+<p><em>Note:</em> When you specify that a variable name is present in a <code>Pattern</code> string, the parser automatically take into consieration that term names can written in slightly different ways with slightly different decorations. For example, taking the previous pattern example, all the following statements will all work in the parser with the defined <code>"rank of suite"</code> pattern:</p>
+<div class="codehilite"><pre>Scope Open Suite, Rank # access constructors
+
+Define suite : Suite := Hearts
+Overload Define Ace : Type := Void
+
+Define card1 : Card := (Ace:Rank) of suite
+Define card2 : Card := (Ace:Rank) of (suite:Suite)
+Define card3 : Card := Ace of suite
+</pre></div>
+
+
+<h4 id="overload"><code>Overload</code><a class="headerlink" href="#overload" title="Permanent link"></a></h4>
+<h4 id="check"><code>Check</code><a class="headerlink" href="#check" title="Permanent link"></a></h4>
+<h4 id="postcheck"><code>PostCheck</code><a class="headerlink" href="#postcheck" title="Permanent link"></a></h4>
+<h4 id="compute"><code>Compute</code><a class="headerlink" href="#compute" title="Permanent link"></a></h4>
+<h4 id="execute"><code>Execute</code><a class="headerlink" href="#execute" title="Permanent link"></a></h4>
+<h3 id="keywords-special-symbols">Keywords / Special Symbols<a class="headerlink" href="#keywords-special-symbols" title="Permanent link"></a></h3>
+<p>All keywords are uncapitalized, and neither keywords nor special symbols can be overloaded.</p>
+<h4 id="match_1"><code>match</code><a class="headerlink" href="#match_1" title="Permanent link"></a></h4>
+<p>To use <code>match</code>, write something like</p>
+<div class="codehilite"><pre>match a
+| a1 x y ↦ something
+| a2 x   ↦ something else
+</pre></div>
+
+
+<p>where <code>a</code> is a term of type <code>A</code>, and each <code>|</code> indicates the start of a function that maps the constructor of <code>A</code> referenced (in this example, <code>a1</code>, and <code>a2</code> are constructors of <code>A</code>). This allows the phrase to evaluate to either something or something else based on what constructor of <code>A</code> that <code>a</code> was built with. In this case, <code>A</code> only has two constructors, <code>a1</code> and <code>a2</code>, but in any match you need to have a function specified to deal with each constructor of the type that you are matching with. The <code>match</code> keyword references the <code>A.match</code> axiom defined (automatically) alongside types when you create them using the constructor (<code>|</code>) syntax.</p>
+<h4 id="discriminate_1"><code>discriminate</code><a class="headerlink" href="#discriminate_1" title="Permanent link"></a></h4>
+<p>To use <code>disciminate</code>, write something like</p>
+<div class="codehilite"><pre>Define true_neq_false
+    : false ≠ true
+    := discriminate false true
+</pre></div>
+
+
+<p>Discriminating creates a proof of inequality between terms of the same type that are constructed with different constructors. In this case, <code>false</code> and <code>true</code> don&rsquo;t take any arguments so its easy to see. Note that you couldn&rsquo;t write this:</p>
+<div class="codehilite"><pre>Define O_neq_S
+    : O ≠ S
+    := discriminate O S
+</pre></div>
+
+
+<p>because although <code>O</code> and <code>S</code> are constructors of <code>Nat</code>, they have different types, <code>Nat</code> and <code>Nat → Nat</code> respectively. Instead, for this example, you&rsquo;d want to write</p>
+<div class="codehilite"><pre>Define O_neq_S
+    : ∀ (n:Nat), O ≠ S n
+    := discriminate O S
+</pre></div>
+
+
+<p>since discriminating <code>O</code> and <code>S</code> will need to prefix an <code>∀ (n:Nat)</code> for <code>S</code>&lsquo;s argument.</p>
+<h4 id="reductio"><code>reductio</code><a class="headerlink" href="#reductio" title="Permanent link"></a></h4>
+<p>Using this keyword is the typical way you will construct proofs by reductio ad absurdum.</p>
+<div class="codehilite"><pre>Define reductio {A:Prop}
+    : (A → False) → ¬ A
+    := ...
+</pre></div>
+
+
+<p>The above is a sort of psuedo-definition for term named <code>reductio</code>, however the keyword is different. The format of the above <code>reductio</code>&lsquo;s typing here is to reflect the process of first assuming <code>A</code>, then showing some contradiction, and thus getting <code>¬ A</code> out of the exchange. Contradiction is an extremely common and powerful proof technique for good reason. Instead of using in quite tht way, however, <code>reductio</code> the keyword instead introduces a new goal <code>False</code> and a new assumption <code>A</code> (where <code>A</code> is implied by external typing). Here&rsquo;s a round-about but illuminating example:</p>
+<div class="codehilite"><pre>Define true_eq_true : true = true :=    
+    reductio
+        (contradiction (reflexivity true))
+</pre></div>
+
+
+<p>In this case, <code>Define</code> implies onto</p>
+<div class="codehilite"><pre>reductio (contradiction (reflexivity true))
+</pre></div>
+
+
+<p>the type <code>true = true</code>. Then <code>reductio</code> implies onto</p>
+<div class="codehilite"><pre>(contradiction (reflexivity true))
+</pre></div>
+
+
+<p>the type <code>(true ≠ true → False)</code>. <code>contradiction</code> determines that since <code>(reflexivity true)</code> has type <code>true = true</code>, it must in total have type <code>contradiction : true = true → true ≠ true → False</code>. As it is applied, this yields the term</p>
+<div class="codehilite"><pre>(contradiction (reflexivity true))
+</pre></div>
+
+
+<p>to have the right type, so the term is successfully defined!</p>
+<p><em>Note:</em> <code>reductio</code> may not even need to be a keyword I guess.</p>
+<h4 id="introduce"><code>introduce</code><a class="headerlink" href="#introduce" title="Permanent link"></a></h4>
+<p>Sometimes when building proof terms, you may have something that looks like</p>
+<div class="codehilite"><pre>... Nat → Nat → Prop
+</pre></div>
+
+
+<p>where in building the term you&rsquo;d like to reference the actual terms by name that are going to be provided when this proof is used. The name <code>intro</code> borrows from Coq and works in a very similar way. For example,</p>
+<div class="codehilite"><pre>Define Nat.add : Nat → Nat → Nat :=
+    match n
+    | O ↦ m
+    | S ↦ match m
+    | O ↦ O
+    | S m&#39; ↦ S S m&#39;
+    where
+        introduce n,m
+</pre></div>
+
+
+<p><code>introduce</code> will create as many names as you provide that correspond to variables of the parenthetical expressions between outer arrows, from left to right, in the typing of the name <code>Define</code> is currently defining, and stopping at the last outer arrow. An <em>outer</em> arrow is one that isn&rsquo;t contained by any explicit parentheses that begin after the colon. Remember that <code>→</code> associates right, so</p>
+<div class="codehilite"><pre>Nat → Nat → Nat
+</pre></div>
+
+
+<p>parenthetically expands to</p>
+<div class="codehilite"><pre>Nat → (Nat → (Nat))
+</pre></div>
+
+
+<p>making the intro sequence as expected from left to right, one <code>Nat</code> at a time. However, if you had typed <code>add</code> like this</p>
+<div class="codehilite"><pre>Define Nat.add : (Nat → Nat) → Nat :=
+    let
+        introduce f #: Nat → Nat
+    in
+        m n ↦ match n
+              | O ↦ m
+              | S ↦ match m
+              | O ↦ O
+              | S m&#39; ↦ S S m&#39;
+        # didn&#39;t end up using f at all...
+</pre></div>
+
+
+<p>things wouldn&rsquo;t be working out as planned probably, since <code>f</code> is a single-arity function and not really useful in the example.</p>
+<p>Also remember that if you already named the variables on either side of the colon in a way like this</p>
+<div class="codehilite"><pre>Define Nat.add (n:Nat) : ∀ (m:Nat), Nat :=
+    match n
+    | O ↦ m
+    | S ↦ match m
+    | O ↦ O
+    | S m&#39; ↦ S S m&#39;
+# n and m were named as variables already
+</pre></div>
+
+
+<p>then you don&rsquo;t need to use intro at all! These techniques can be combined as well:</p>
+<div class="codehilite"><pre>Define Nat.make_adder (n:Nat) : Nat → Nat :=
+    match n
+    | O ↦ m
+    | S ↦ match m
+    | O ↦ O
+    | S m&#39; ↦ S S m&#39;
+    where
+        introduce m
+</pre></div>
+
+
+<p>This may seem like a sort of gimmick, but it actually is a great way to make you code readable when you start to have complicated <code>let</code> or <code>where</code> clauses in which you either nest clauses or work with subgoals. Note that when you nest <code>where</code>s, the outer name&rsquo;s signature will not be avaliable to <code>introduce</code>, and only the <code>where</code> clause&rsquo;s immediate target will be. For example,</p>
+<div class="codehilite"><pre>Define true_eq_true : true = true :=
+    reductio pf
+    where
+        pf : true ≠ true → False := counter
+        where
+            introduce true_neq_true
+            counter := contradiction
+                (reflexivity true)
+                true_neq_true
+</pre></div>
+
+
+<p>At the second <code>where</code> we are entering name &ldquo;pf&rdquo;, so the introduction expressions order looks like, from this scope,</p>
+<div class="codehilite"><pre>true ≠ true → False
+</pre></div>
+
+
+<p>This is important because when <code>introduce</code> is used, it takes the <code>true ≠ true</code>.</p>
+<h4 id="let-in"><code>let</code> &hellip; <code>in</code><a class="headerlink" href="#let-in" title="Permanent link"></a></h4>
+<p>Starting an expression with <code>let</code> indicates that everything between the <code>let</code> and following <code>in</code> should be treated as locally defined in a scope containing the expressions after the <code>let</code> and the final expression after the <code>in</code>, and this local scope cannot be accessed from outside (its a temporary scope). For example,</p>
+<div class="codehilite"><pre>Define x :=
+    let
+        a := 1
+        b := 2
+        c := 3
+    in
+        a + b + c
+
+Compute x #&gt; 6
+</pre></div>
+
+
+<p>Only <code>Define</code> headers may be used inside the <code>let</code>&hellip;<code>in</code> clause, and if they are left out they are implied, as they are in the example above.</p>
+<h4 id="where"><code>where</code><a class="headerlink" href="#where" title="Permanent link"></a></h4>
+<p><code>where</code> clauses work in the same way as <code>let</code>&hellip;<code>in</code> clause, but with a different ordering. Ending an expression with <code>where</code> indicates that the clause following the <code>where</code> will be a temporary scope in following the same rules as a <code>let</code>&hellip;<code>in</code> that is accessable by the expression preceeding the <code>where</code>. Rewriting the example in <code>let</code>&hellip;<code>in</code> section,</p>
+<div class="codehilite"><pre>Define x := a + b + c
+    where
+        a := 1
+        b := 2
+        c := 3
+</pre></div>
+
+
+<p>Deciding between <code>let</code>&hellip;<code>in</code> clauses and <code>where</code> clauses is a purely aesthetic desicion.</p>
+<h6 id="_1"><code>:</code><a class="headerlink" href="#_1" title="Permanent link"></a></h6>
+<h6 id="_2"><code>→</code><a class="headerlink" href="#_2" title="Permanent link"></a></h6>
+<h6 id="_3"><code>|</code><a class="headerlink" href="#_3" title="Permanent link"></a></h6>
+<h6 id="_4"><code>↦</code><a class="headerlink" href="#_4" title="Permanent link"></a></h6>
+<h6 id="_5"><code>∀</code><a class="headerlink" href="#_5" title="Permanent link"></a></h6>
+<h6 id="_6"><code>∃</code><a class="headerlink" href="#_6" title="Permanent link"></a></h6>
 <h2 id="type-judgements">Type Judgements<a class="headerlink" href="#type-judgements" title="Permanent link"></a></h2>
 <p>A type judgement is of the form</p>
 <div class="codehilite"><pre>term : type
@@ -1298,11 +1643,11 @@ Axiom c : C
 
 
 <p>More simply, we can just</p>
-<div class="codehilite"><pre>Check a #--&gt; a : A
+<div class="codehilite"><pre>Check a #&gt; a : A
 </pre></div>
 
 
-<h4 id="variables-in-sigantures">Variables in Sigantures<a class="headerlink" href="#variables-in-sigantures" title="Permanent link"></a></h4>
+<h3 id="variables-in-sigantures">Variables in Sigantures<a class="headerlink" href="#variables-in-sigantures" title="Permanent link"></a></h3>
 <p>In signatures, you may want to refer to the same value more than once. To do this, there are a few special ways to include variables in signatures. They are detailed in the next two sub-sections, but below is a comprehensive list:</p>
 <div class="codehilite"><pre># Explicit parameters come before the colon,
 # and if types are specified, parentheses surround inidividual
@@ -1315,7 +1660,7 @@ Axiom g (x y z : Real) : Real #: Real → Real → Real → Real
 # Can also be done like this
 
 Define add_one : ∀ (x:Nat), Nat := x ↦ S x #: Nat → Nat
-Pattern &quot;x + 1&quot; (x:Nat) := add_one
+Pattern &quot;x + 1&quot; (x:Nat) : Nat := add_one
 
 # Implicit parameters come before the colon
 # and also before any explicit parameters.
@@ -1337,17 +1682,17 @@ Define h := g * f #: Real → Real
 Axiom Bool : Type := | true | false
 
 Scope Bool (b:Bool) : Bool {
-    # the first &#39;Bool&#39; scopes inside the name
-    # the &#39;b:Bool&#39; variable indicates that names
+    # the first &quot;Bool&quot; scopes inside the name
+    # the &quot;b:Bool&quot; variable indicates that names
     # inside this scope have this first explicit variable
-    # the second &#39;Bool&#39; indicates the names inside
+    # the second &quot;Bool&quot; indicates the names inside
     # this scope have signatures that end with Bool
     Define not := match b | false | true #: Bool → Bool
 }
 </pre></div>
 
 
-<h5 id="explicits">Explicits<a class="headerlink" href="#explicits" title="Permanent link"></a></h5>
+<h4 id="explicits">Explicits<a class="headerlink" href="#explicits" title="Permanent link"></a></h4>
 <p>You may write explicit variables either before or after the colon, but each way has a unique syntax. If the types of the variables are specified, parentheses are required around the variable names and their types.</p>
 <p>Before the colon (parameter syntax):</p>
 <div class="codehilite"><pre>Define f (a b c : Nat) : Nat := a * b + c * d
@@ -1355,84 +1700,207 @@ Scope Bool (b:Bool) : Bool {
 </pre></div>
 
 
-<p>After the colon (&lsquo;forall&rsquo; syntax):</p>
+<p>After the colon (&ldquo;forall&rdquo; syntax):</p>
 <div class="codehilite"><pre>Axiom f : ∀ (a b c d: Nat) : Nat := a b c d ↦ a * b + c * d
 #: Nat → Nat → Nat → Nat
 </pre></div>
 
 
-<p>The difference netween these, as you may notice, is that in the &lsquo;forall&rsquo; syntax the right side of the <code>:=</code> must example have the type specified by the right side of the colon of the type judgement, whereas in the parameter syntax the variables didn&rsquo;t appear on the right side of the colon for judging <code>f</code>, so the <code>a b c d</code> didn&rsquo;t need to be repeated, and just the resulting <code>Nat</code> value of <code>a * b + c * d</code> needed to be stated.</p>
-<p>Because of this, the parameter syntax is a little more flexible, but the &lsquo;forall&rsquo; syntax can be more flavorful and expressive sometimes, as well as allowing outer types to contain variables, such as in</p>
-<div class="codehilite"><pre>Axiom liebniz (n m: Nat) : n = m → ( ∀ (P:Nat→Nat), P n → P m )
+<p>The difference netween these, as you may notice, is that in the &ldquo;forall&rdquo; syntax the right side of the <code>:=</code> must example have the type specified by the right side of the colon of the type judgement, whereas in the parameter syntax the variables didn&rsquo;t appear on the right side of the colon for judging <code>f</code>, so the <code>a b c d</code> didn&rsquo;t need to be repeated, and just the resulting <code>Nat</code> value of <code>a * b + c * d</code> needed to be stated.</p>
+<p>Because of this, the parameter syntax is a little more flexible, but the &ldquo;forall&rdquo; syntax can be more flavorful and expressive sometimes, as well as allowing outer types to contain variables, such as in</p>
+<div class="codehilite"><pre>Axiom liebniz (n m: Nat) : n = m → ∀ (P:Nat→Nat), P n → P m
 Define props_for_one := liebniz 1 1 (Equal.reflexivity 1)
 #: ∀ (P:Nat→Nat), P 1 → P 1
 </pre></div>
 
 
-<h5 id="implicits">Implicits<a class="headerlink" href="#implicits" title="Permanent link"></a></h5>
+<h4 id="implicits">Implicits<a class="headerlink" href="#implicits" title="Permanent link"></a></h4>
 <p>You may only write implicit variables before the colon, before any expicit variables. Implicit variables are unique in that they are tagged to require inference when they are used. For example,</p>
 <div class="codehilite"><pre>Define id {A:Type} (a:A) := a #: A → A
 </pre></div>
 
 
 <p>The <code>{A:Type}</code> is not included in the signature of the name <code>id</code>, since the parameter is not to be given when using the name. There is a little flexibility to this though. You can specifically pass implict parameters like so:</p>
-<div class="codehilite"><pre>Compute id {Set} 1 #--&gt; 1
+<div class="codehilite"><pre>Compute id {Set} 1 #&gt; 1
 </pre></div>
 
 
 <p>This can be useful if there are times when you may be using symbols for multiple things (overloading), which is fine but required explicit typing sometimes.</p>
-<h5 id="exists-statement">Exists Statement<a class="headerlink" href="#exists-statement" title="Permanent link"></a></h5>
-<h3 id="writing-names">Writing Names<a class="headerlink" href="#writing-names" title="Permanent link"></a></h3>
+<h4 id="exists-statement">Exists Statement<a class="headerlink" href="#exists-statement" title="Permanent link"></a></h4>
+<p>In signatures, you can say that something has the type <code>∃ (x:A), Px</code> where <code>x</code> is a variable name, <code>A</code> is a type, and the <code>Px</code> is a <code>Prop</code> about <code>x</code>. For example you might say</p>
+<div class="codehilite"><pre>Axiom nat_has_no_maximum:
+    ∀ (n:Nat), ∃ (m:Nat), n &lt; m
+</pre></div>
+
+
+<p><code>∃ x, Px</code> is really just notation for the <code>InhabitedDomain</code> type:</p>
+<div class="codehilite"><pre>Axiom InhabitedDomain {A:Type} (P:A→Prop) : Prop :=
+| intro {A:Type} {P:A→Prop} (wt : A) (pf : P wt) : InhabitedDomain P
+
+Pattern &quot;∃ x, Px&quot;
+    {A:Type} (x:A) (Px:Prop) : Prop
+    := &quot;InhabitedDomain (x ↦ Px)&quot;
+</pre></div>
+
+
+<p>Here&rsquo;s some more notation for the lengthy <code>InhabitedDomain.intro</code> constructor:</p>
+<div class="codehilite"><pre>Pattern &quot;example wt pf&quot;
+    {A:Type} {P:A→Prop} (wt:A) (pf:A→Prop) : InhabitedDomain P
+    := InhabitedDomain.intro wt pf
+</pre></div>
+
+
+<p>So, we can write the original axiom in its expanded form</p>
+<div class="codehilite"><pre>Axiom nat_has_no_maximum: ∀ (n:Nat), InhabitedDomain (m ↦ n &lt; m)
+</pre></div>
+
+
+<p>To prove this rather than take it as an axiom:</p>
+<div class="codehilite"><pre>Define nat_has_no_maximum: ∀ (n:Nat), InhabitedDomain (m ↦ n &lt; m) :=
+    let
+        wt := Nat.S n        #: Nat
+        pf (n:Nat) := Lt.S n #: ∀ (n:Nat), n &lt; S n
+    in
+        InhabitedDomain.intro wt pf
+</pre></div>
+
+
+<p>Or we can do it this way, of course as inspired by Haskell&rsquo;s unforgettable <code>where</code> syntax:</p>
+<div class="codehilite"><pre>Define nat_has_no_maximum: ∀ (n:Nat), InhabitedDomain (m ↦ n &lt; m) :=
+    InhabitedDomain.intro wt pf
+    where
+        wt := Nat.S n        #: Nat
+        pf (n:Nat) := Lt.S n #: ∀ (n:Nat), n &lt; S n
+</pre></div>
+
+
+<p>The writing out of <code>InhabitedDomain</code> and its slightly counter-intuitive formatting makes using the <code>∃ x, Px</code> pattern the most efficient in most cases, like this final proof (in quickest form) demonstrates:</p>
+<div class="codehilite"><pre>Define nat_has_no_maximum : ∀ (n:Nat), ∃ (x:Nat), n &lt; m :=
+    example wt pf
+    where # succ of n is always greater than n, by Lt.S
+        wt := Nat.S n
+        pf (n:Nat) := Lt.S n
+</pre></div>
+
+
+<h2 id="names">Names<a class="headerlink" href="#names" title="Permanent link"></a></h2>
 <p>To use a name, first type the name, then supply as many parameters as you want like so:</p>
 <div class="codehilite"><pre>name var1 var2 var3 ...
 </pre></div>
 
 
+<h3 id="associativity">Associativity<a class="headerlink" href="#associativity" title="Permanent link"></a></h3>
+<ul>
+<li><strong>Left Associativity</strong>: A B C -→ (A B) C</li>
+<li><strong>Right Associativity</strong>: A B C -→ A (B C)</li>
+</ul>
+<p>The rules for associativity are outlined here, in order from greatest to least priority:</p>
+<table>
+<thead>
+<tr>
+<th>Phrase</th>
+<th>Rule</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vocab</td>
+<td>left</td>
+<td>Scope Open Nat ==&gt; (Scope Open) Nat</td>
+</tr>
+<tr>
+<td>∃ x, Px</td>
+<td>right</td>
+<td>∃x, ∃y, ∃z, x=y=z ==&gt; ∃x, (∃y, ∃z, x=y=z)</td>
+</tr>
+<tr>
+<td>∀ x, Px</td>
+<td>right</td>
+<td>∀x, ∀y, ∀z, x=y=z ==&gt; ∀x, (∀y, ∀z, x=y=z)</td>
+</tr>
+<tr>
+<td>↦</td>
+<td>right</td>
+<td>x ↦ y ↦ z ==&gt; x ↦ (y ↦ z)</td>
+</tr>
+<tr>
+<td>→</td>
+<td>left</td>
+<td>A → B → C ==&gt; (A → B) → C</td>
+</tr>
+<tr>
+<td>default</td>
+<td>left</td>
+<td>f g h ==&gt; (f g) h</td>
+</tr>
+</tbody>
+</table>
+<h2 id="compilation">Compilation<a class="headerlink" href="#compilation" title="Permanent link"></a></h2>
+<p>Compiling a Craft program is divided into two phases.</p>
+<h3 id="expansion">Expansion<a class="headerlink" href="#expansion" title="Permanent link"></a></h3>
+<p>First, the compiler scans through the  program and fully expands all expressions. This means adding in parentheses and seperating variable spaces and all that, as well as shifting everything other than names to the right of the type judgement <code>:</code>s. Observe:</p>
+<div class="codehilite"><pre>Define f x := x + 1
+Define lemma : ∃ (x y:Bool), x = y ∧ x = false
+</pre></div>
+
+
+<p>expands to</p>
+<div class="codehilite"><pre>(
+    (
+        (Define)
+        (f)
+    )
+    (:)
+    (
+        (∀) (x:?)
+    )
+    (:=)
+    (
+        (x) + (1)
+    )
+)
+
+(
+    (
+        (Define)
+        (lemma)
+    )
+    (:)
+    (
+        (∃ (x:Bool)),
+        (
+            (∃ (y:Bool)),
+            (
+                ( ((x) =) (y) )
+                (∧)
+                ( ((x) =) (false) )
+            )
+        )
+    )
+)
+</pre></div>
+
+
+<p>The parentheses all are exactly resulting from associativity rules.</p>
+<h3 id="parsing">Parsing<a class="headerlink" href="#parsing" title="Permanent link"></a></h3>
+<p>Next, the compiler scans through the pro</p>
+<h3 id="type-checking">Type Checking<a class="headerlink" href="#type-checking" title="Permanent link"></a></h3>
+<h3 id="value-computation">Value Computation<a class="headerlink" href="#value-computation" title="Permanent link"></a></h3>
 <h2 id="values">Values<a class="headerlink" href="#values" title="Permanent link"></a></h2>
-<h3 id="evaluation-beta-reduction">Evaluation (Beta-Reduction)<a class="headerlink" href="#evaluation-beta-reduction" title="Permanent link"></a></h3>
-<h3 id="computation">Computation<a class="headerlink" href="#computation" title="Permanent link"></a></h3>
-<h3 id="referencing-values">Referencing values<a class="headerlink" href="#referencing-values" title="Permanent link"></a></h3>
+<h3 id="referencing-values">Referencing Values<a class="headerlink" href="#referencing-values" title="Permanent link"></a></h3>
+<p>When you write something like</p>
+<div class="codehilite"><pre>Define x : Nat := 1
+</pre></div>
+
+
+<p>The name is <code>x</code> and the referenced value is <code>1</code>. </p>
+<p>the value of <code>1</code> is bound to the name <code>x</code>. TODO</p>
+<h3 id="computing-values">Computing Values<a class="headerlink" href="#computing-values" title="Permanent link"></a></h3>
+<h3 id="returning-values">Returning Values<a class="headerlink" href="#returning-values" title="Permanent link"></a></h3>
 <h2 id="scopes">Scopes<a class="headerlink" href="#scopes" title="Permanent link"></a></h2>
-<h3 id="modules">Modules<a class="headerlink" href="#modules" title="Permanent link"></a></h3>
-<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link"></a></h2>
-<p>Type conjunctions and disjunctions:</p>
-<div class="codehilite"><pre>Axiom Conjunction {A B : Type} : A → B → Type :=
-| intro : A → B → Cojunction A B
-
-Axiom Disjunction {A B : Type} : A → B → Type :=
-| intro_left  : A → Disjunction A B
-| intro_right : B → Disjunction A B
-</pre></div>
-
-
-<p>Proposition negation:</p>
-<div class="codehilite"><pre>Axiom Not : Prop → Type :=
-| intro : ∀ (P:Prop), (P → False) → Not P
-</pre></div>
-
-
-<p>Relations:</p>
-<div class="codehilite"><pre>Define Relation {A : Type} := (A → A → Prop) → Type
-</pre></div>
-
-
-<p>Natural Numbers:</p>
-<div class="codehilite"><pre>Module Nat
-
-    Inductive Nat : Set :=
-    | O : Nat
-    | S : Nat → Nat
-
-    Scope Nat # adds things named like `Nat.*` to local scope
-
-    Axiom Le (n m : Nat) : Relation Nat :=
-    | S  : m = S n → Le n m
-    | Sn : Le n m → Le n (S m)
-
-    Axiom Gt (n m : Nat) : Relation Nat :=
-    | S  : n = S m → Gt n m
-    | Sn : Gt n m → Gt (S n) m
-</pre></div>
-
-
-<h2 id="unique-ideas">Unique Ideas<a class="headerlink" href="#unique-ideas" title="Permanent link"></a></h2></article></body></html>
+<h3 id="named-scopes">Named Scopes<a class="headerlink" href="#named-scopes" title="Permanent link"></a></h3>
+<h4 id="unparametrized-scopes">Unparametrized Scopes<a class="headerlink" href="#unparametrized-scopes" title="Permanent link"></a></h4>
+<h4 id="parametrized-scopes">Parametrized Scopes<a class="headerlink" href="#parametrized-scopes" title="Permanent link"></a></h4>
+<h3 id="anonymous-scopes">Anonymous Scopes<a class="headerlink" href="#anonymous-scopes" title="Permanent link"></a></h3>
+<h3 id="modules">Modules<a class="headerlink" href="#modules" title="Permanent link"></a></h3></article></body></html>
