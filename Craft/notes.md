@@ -326,6 +326,24 @@ If you run the checks you'll get these
 
 `PostCheck` reflects what will actually be scene when the code is run, as only in the type-checking phase that `Check` operates in are names not substituted by their bindings.
 
+#### `Recursive`
+
+The `Recursive` header works in almost the same way as the `Define` header except that it allows recursive definitions, as you may have guessed. Not a lot new here, but take a look at the classic example:
+
+    Recursive fibonacci (n:Nat) : Nat :=
+        match n
+        | O     ↦ O
+        | S O   ↦ S O
+        | S S m ↦ fibonacci (S m) + fibonacci (m)
+
+_Note:_ This may end up being merged with `Define` so that you don't have to distinguish them.
+
+#### `Monad`
+
+A monad is a structure that specifies a process for execution rather than a value for binding. In other words, all monads implement an execution process, which can take inputs and return outputs. A classic monad for demonstrating this concept is the monad `IO`:
+
+    Monad IO : 
+
 #### `Pattern`
 
 The `Pattern` header is a super useful and versatile macro-creation device. Don't worry about infixes or spaces any longer! Just a simple pattern can take care of almost any notational specialty you'd like to include. The notation of `Pattern` starts with the raw pattern in `"`s, followed by variables included in the pattern (if any), followed by a `:` and signature (optional), and finally ended with a `:=` and binding. The binding may be either a term, or string (using `"`s). For example, here's a neat way to type playing cards and then reference them.
@@ -388,6 +406,37 @@ To use `match`, write something like
 
 where `a` is a term of type `A`, and each `|` indicates the start of a function that maps the constructor of `A` referenced (in this example, `a1`, and `a2` are constructors of `A`). This allows the phrase to evaluate to either something or something else based on what constructor of `A` that `a` was built with. In this case, `A` only has two constructors, `a1` and `a2`, but in any match you need to have a function specified to deal with each constructor of the type that you are matching with. The `match` keyword references the `A.match` axiom defined (automatically) alongside types when you create them using the constructor (`|`) syntax.
 
+You may also do some more fancy matching, where you take advantage of nested constructions of terms like so:
+
+    Define bounded_minus3 : Nat → Nat :=
+        match n
+        | O       ↦ O
+        | S O     ↦ O
+        | S S O   ↦ O
+        | S S S m ↦ m
+
+    Recursive pair_max : (Nat,Nat) → Nat :=
+        match n,m
+        | O,O      ↦ O
+        | S q, O   ↦ S q
+        | O, S r   ↦ S r
+        | S q, S r ↦ pair_max q r
+
+#### `if`,`then`,`else`
+
+The typical clause you're familiar with. It has a signature and pattern rule like this
+
+    Scope {A:Type} (b:Bool) (a1 a2:A) : A {
+
+        Define IfElse :=
+            match b
+            | true ↦ a1
+            | false ↦ a2
+        
+        Pattern "if condition then a1 else a2" := IfElse condition a1 a2
+
+    }
+
 #### `discriminate`
 
 To use `disciminate`, write something like
@@ -436,90 +485,11 @@ the type `(true ≠ true → False)`. `contradiction` determines that since `(re
 
     (contradiction (reflexivity true))
 
-to have the right type, so the term is successfully defined!
+to have the right type for `reductio` to use, so the term is successfully defined!
 
-_Note:_ `reductio` may not even need to be a keyword I guess.
+_Note:_ `reductio` may not even need to be a keyword I guess I just have to define it properly.
 
-#### `introduce`
-
-Sometimes when building proof terms, you may have something that looks like
-
-    ... Nat → Nat → Prop
-
-where in building the term you'd like to reference the actual terms by name that are going to be provided when this proof is used. The name `intro` borrows from Coq and works in a very similar way. For example,
-
-    Define Nat.add : Nat → Nat → Nat :=
-        match n
-        | O ↦ m
-        | S ↦ match m
-        | O ↦ O
-        | S m' ↦ S S m'
-        where
-            introduce n,m
-
-`introduce` will create as many names as you provide that correspond to variables of the parenthetical expressions between outer arrows, from left to right, in the typing of the name `Define` is currently defining, and stopping at the last outer arrow. An _outer_ arrow is one that isn't contained by any explicit parentheses that begin after the colon. Remember that `→` associates right, so
-
-    Nat → Nat → Nat
-
-parenthetically expands to
-
-    Nat → (Nat → (Nat))
-
-making the intro sequence as expected from left to right, one `Nat` at a time. However, if you had typed `add` like this
-
-    Define Nat.add : (Nat → Nat) → Nat :=
-        let
-            introduce f #: Nat → Nat
-        in
-            m n ↦ match n
-                  | O ↦ m
-                  | S ↦ match m
-                  | O ↦ O
-                  | S m' ↦ S S m'
-            # didn't end up using f at all...
-
-things wouldn't be working out as planned probably, since `f` is a single-arity function and not really useful in the example.
-
-Also remember that if you already named the variables on either side of the colon in a way like this
-
-    Define Nat.add (n:Nat) : ∀ (m:Nat), Nat :=
-        match n
-        | O ↦ m
-        | S ↦ match m
-        | O ↦ O
-        | S m' ↦ S S m'
-    # n and m were named as variables already
-
-then you don't need to use intro at all! These techniques can be combined as well:
-
-    Define Nat.make_adder (n:Nat) : Nat → Nat :=
-        match n
-        | O ↦ m
-        | S ↦ match m
-        | O ↦ O
-        | S m' ↦ S S m'
-        where
-            introduce m
-
-This may seem like a sort of gimmick, but it actually is a great way to make you code readable when you start to have complicated `let` or `where` clauses in which you either nest clauses or work with subgoals. Note that when you nest `where`s, the outer name's signature will not be avaliable to `introduce`, and only the `where` clause's immediate target will be. For example,
-
-    Define true_eq_true : true = true :=
-        reductio pf
-        where
-            pf : true ≠ true → False := counter
-            where
-                introduce true_neq_true
-                counter := contradiction
-                    (reflexivity true)
-                    true_neq_true
-
-At the second `where` we are entering name "pf", so the introduction expressions order looks like, from this scope,
-
-    true ≠ true → False
-
-This is important because when `introduce` is used, it takes the `true ≠ true`.
-
-#### `let` ... `in`
+#### `let`,`in`
 
 Starting an expression with `let` indicates that everything between the `let` and following `in` should be treated as locally defined in a scope containing the expressions after the `let` and the final expression after the `in`, and this local scope cannot be accessed from outside (its a temporary scope). For example,
 
@@ -533,11 +503,11 @@ Starting an expression with `let` indicates that everything between the `let` an
 
     Compute x #> 6
 
-Only `Define` headers may be used inside the `let`...`in` clause, and if they are left out they are implied, as they are in the example above.
+Only `Define` headers may be used inside the `let`,`in` clause, and if they are left out they are implied, as they are in the example above.
 
 #### `where`
 
-`where` clauses work in the same way as `let`...`in` clause, but with a different ordering. Ending an expression with `where` indicates that the clause following the `where` will be a temporary scope in following the same rules as a `let`...`in` that is accessable by the expression preceeding the `where`. Rewriting the example in `let`...`in` section,
+`where` clauses work in the same way as `let`,`in` clause, but with a different ordering. Ending an expression with `where` indicates that the clause following the `where` will be a temporary scope in following the same rules as a `let`,`in` that is accessable by the expression preceeding the `where`. Rewriting the example in `let`,`in` section,
 
     Define x := a + b + c
         where
@@ -545,7 +515,84 @@ Only `Define` headers may be used inside the `let`...`in` clause, and if they ar
             b := 2
             c := 3
 
-Deciding between `let`...`in` clauses and `where` clauses is a purely aesthetic desicion.
+Deciding between `let`,`in` clauses and `where` clauses is a purely aesthetic desicion.
+
+#### `introduce`
+
+Sometimes when building proof terms, you may have something that looks like
+
+    ... Nat → Nat → Prop
+
+where in building the term you'd like to reference the actual terms by name that are going to be provided when this proof is used. The name `intro` borrows from Coq and works in a very similar way. For example,
+
+    Recursive Nat.add : Nat → Nat → Nat :=
+        match n,m
+        | O  , _   ↦ n
+        | _  , O   ↦ m
+        | S q, S r ↦ S S (Nat.add q r)
+        where
+            introduce n,m
+
+`introduce` will create as many names as you provide that correspond to variables of the parenthetical expressions between outer arrows, from left to right, in the typing of the name `Recursive` is currently defining, and stopping at the last outer arrow. An _outer_ arrow is one that isn't contained by any explicit parentheses that begin after the colon. Remember that `→` associates right, so
+
+    Nat → Nat → Nat
+
+parenthetically expands to
+
+    Nat → (Nat → (Nat))
+
+making the intro sequence as expected from left to right, one `Nat` at a time. However, if you had typed `add` like this
+
+    Recursive Nat.add : (Nat → Nat) → Nat :=
+        let
+            introduce f #: Nat → Nat
+        in
+            # don't end up using f at all...
+            n m ↦
+            match n,m
+            | O  , _   ↦ n
+            | _  , O   ↦ m
+            | S q, S r ↦ S S (Nat.add q r)
+
+things wouldn't be working out as planned probably, since `f` is a single-arity function and not really useful in the example.
+
+Also remember that if you already named the variables on either side of the colon in a way like this
+
+    Recursive Nat.add (n:Nat) : ∀ (m:Nat), Nat :=
+        match n,m
+        | O  , _   ↦ n
+        | _  , O   ↦ m
+        | S q, S r ↦ S S (Nat.add q r)
+    # n and m were named as variables already
+
+then you don't need to use intro at all! These techniques can be combined as well:
+
+    Recursive Nat.make_adder (n:Nat) : Nat → Nat :=
+        match n,m
+        | O  , _   ↦ n
+        | _  , O   ↦ m
+        | S q, S r ↦ S S (Nat.add q r)
+        where
+            introduce m
+
+This may seem like a sort of gimmick, but it actually is a great way to make you code readable when you start to have complicated `let` or `where` clauses in which you either nest clauses or work with subgoals. Note that when you nest `where`s, the outer name's signature will not be avaliable to `introduce`, and only the `where` clause's immediate target will be. For example,
+
+    Define true_eq_true : true = true :=
+        let
+            r_pf : true ≠ true → False := counter
+                where
+                    introduce true_neq_true
+                    counter := contradiction
+                        (reflexivity true)
+                        true_neq_true
+        in
+            reductio r_pf
+
+At the second `where` we are entering name "pf", so the introduction expressions order looks like, from this scope,
+
+    true ≠ true → False
+
+This is important because when `introduce` is used, it takes the `true ≠ true`.
 
 ###### `:`
 ###### `→`
@@ -553,6 +600,8 @@ Deciding between `let`...`in` clauses and `where` clauses is a purely aesthetic 
 ###### `↦`
 ###### `∀`
 ###### `∃`
+
+See [Exists Statement](#exists-statement)
 
 ## Type Judgements
 
@@ -746,11 +795,11 @@ The rules for associativity are outlined here, in order from greatest to least p
 
 ## Compilation
 
-Compiling a Craft program is divided into two phases.
+Compiling a Craft program is divided into several phases:
 
-### Expansion
+1. **Expansion**
 
-First, the compiler scans through the  program and fully expands all expressions. This means adding in parentheses and seperating variable spaces and all that, as well as shifting everything other than names to the right of the type judgement `:`s. Observe:
+The compiler scans through the  program and fully expands all expressions. This means adding in parentheses and seperating variable spaces and all that, as well as shifting everything other than names to the right of the type judgement `:`s. Observe:
 
     Define f x := x + 1
     Define lemma : ∃ (x y:Bool), x = y ∧ x = false
@@ -793,32 +842,64 @@ expands to
 
 The parentheses all are exactly resulting from associativity rules. The `?`s indicates that a typing was expected, but none was given explicitly. So, the `?`s are to be infered by the type checking process.
 
-### Parsing
+2. **Patterns**
 
-Next, the compiler scans through the program to make sure that syntax rules are followed correctly.
+The compiler specifically looks for `Pattern` declarations, and ignores everything else. The scope of the `Pattern` declarations are noted.
 
-### Type Checking
+3. **Parsing**
+
+THe compiler makes sure that syntax rules are followed correctly in all lines of the program. Instances where a pattern _may_ be applied are tagged with the possible patterns that could possibly apply there. In the type checking phase, the correct interpretation (if any) will be determined. Errors that result from this pattern parsing (if no possible interpretation type-checks) will be a type checking error thrown in the next section.
+
+4. **Type Checking**
 
 Next, the type checker checks each module, in a tree leaf-to-root fashion of independence, for correct typings.
 
-### Execution
+5. **Execution**
 
 `Execute`s are run.
 
 ## Values
 
-### Referencing Values
+Value are represented differently in three sequencial phases.
 
-When you write something like
+1. **Referencing Values**
+
+Lazily-bound value are how your names are initially interpretted by the compiler. When you write something like
 
     Define x : Nat := 1
 
-The name is `x` and the referenced value is `1`. 
+The name `x` is bound to the value `1`. This means that, via a beta-reduction application, `x` reduces to `1`. However, this reduction is only guranteed to have been performed by then end of the `Reducing Values` step.
 
-the value of `1` is bound to the name `x`. TODO
+This type of reduction applies to functions as well. For example in,
 
-### Computing Values
-### Returning Values
+    Define not (b:Bool) := match b | true↦false | false↦true
+    Define not_false := not false
+
+`not_false` is bound to `not false`. Only via a beta-reduction step can we reduce this binding to `true`.
+
+2. **Reducing Values**
+
+Values are 'computed' via applying beta-reduction until terms are completely reduced. For example, if we had
+
+    Define a := 1
+    Define b (x:Nat) := a
+    Define c := b 2
+    Define d := c
+
+the then the steps to find the value of `Compute c` are
+
+    Compute c
+    ==> d
+    ==> c
+    ==> b 2
+    ==> a
+    ==> 1
+
+3. **Returning Values**
+
+The process of _returning_ is critically different from the process of _computing/reducing_. All terms can reduce, but only _executable_ terms can return. So what's an executable term? Generally, these are referred to as monads. Monads are special in that they do not describe a value but instead describe a process for obtaining a value. A Monad always has specifies its return type as the type of the term that can be expected to be obtained when the monad is executed. To obtain this value, use the header [`Execute`](#execute), as described in the Headers section.
+
+
 
 ## Scopes
 ### Named Scopes

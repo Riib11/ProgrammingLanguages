@@ -1379,6 +1379,17 @@ PostCheck x_eq_y #: 1 = 1
 
 
 <p><code>PostCheck</code> reflects what will actually be scene when the code is run, as only in the type-checking phase that <code>Check</code> operates in are names not substituted by their bindings.</p>
+<h4 id="recursive"><code>Recursive</code><a class="headerlink" href="#recursive" title="Permanent link"></a></h4>
+<p>The <code>Recursive</code> header works in almost the same way as the <code>Define</code> header except that it allows recursive definitions, as you may have guessed. Not a lot new here, but take a look at the classic example:</p>
+<div class="codehilite"><pre>Recursive fibonacci (n:Nat) : Nat :=
+    match n
+    | O     ↦ O
+    | S O   ↦ S O
+    | S S m ↦ fibonacci (S m) + fibonacci (m)
+</pre></div>
+
+
+<p><em>Note:</em> This may end up being merged with <code>Define</code> so that you don&rsquo;t have to distinguish them.</p>
 <h4 id="pattern"><code>Pattern</code><a class="headerlink" href="#pattern" title="Permanent link"></a></h4>
 <p>The <code>Pattern</code> header is a super useful and versatile macro-creation device. Don&rsquo;t worry about infixes or spaces any longer! Just a simple pattern can take care of almost any notational specialty you&rsquo;d like to include. The notation of <code>Pattern</code> starts with the raw pattern in <code>"</code>s, followed by variables included in the pattern (if any), followed by a <code>:</code> and signature (optional), and finally ended with a <code>:=</code> and binding. The binding may be either a term, or string (using <code>"</code>s). For example, here&rsquo;s a neat way to type playing cards and then reference them.</p>
 <div class="codehilite"><pre>Axiom Suite : Set :=
@@ -1440,6 +1451,38 @@ Define card3 : Card := Ace of suite
 
 
 <p>where <code>a</code> is a term of type <code>A</code>, and each <code>|</code> indicates the start of a function that maps the constructor of <code>A</code> referenced (in this example, <code>a1</code>, and <code>a2</code> are constructors of <code>A</code>). This allows the phrase to evaluate to either something or something else based on what constructor of <code>A</code> that <code>a</code> was built with. In this case, <code>A</code> only has two constructors, <code>a1</code> and <code>a2</code>, but in any match you need to have a function specified to deal with each constructor of the type that you are matching with. The <code>match</code> keyword references the <code>A.match</code> axiom defined (automatically) alongside types when you create them using the constructor (<code>|</code>) syntax.</p>
+<p>You may also do some more fancy matching, where you take advantage of nested constructions of terms like so:</p>
+<div class="codehilite"><pre>Define bounded_minus3 : Nat → Nat :=
+    match n
+    | O       ↦ O
+    | S O     ↦ O
+    | S S O   ↦ O
+    | S S S m ↦ m
+
+Recursive pair_max : (Nat,Nat) → Nat :=
+    match n,m
+    | O,O      ↦ O
+    | S q, O   ↦ S q
+    | O, S r   ↦ S r
+    | S q, S r ↦ pair_max q r
+</pre></div>
+
+
+<h4 id="ifthenelse"><code>if</code>,<code>then</code>,<code>else</code><a class="headerlink" href="#ifthenelse" title="Permanent link"></a></h4>
+<p>The typical clause you&rsquo;re familiar with. It has a signature and pattern rule like this</p>
+<div class="codehilite"><pre>Scope {A:Type} (b:Bool) (a1 a2:A) : A {
+
+    Define IfElse :=
+        match b
+        | true ↦ a1
+        | false ↦ a2
+
+    Pattern &quot;if condition then a1 else a2&quot; := IfElse condition a1 a2
+
+}
+</pre></div>
+
+
 <h4 id="discriminate_1"><code>discriminate</code><a class="headerlink" href="#discriminate_1" title="Permanent link"></a></h4>
 <p>To use <code>disciminate</code>, write something like</p>
 <div class="codehilite"><pre>Define true_neq_false
@@ -1493,94 +1536,9 @@ Define card3 : Card := Ace of suite
 </pre></div>
 
 
-<p>to have the right type, so the term is successfully defined!</p>
-<p><em>Note:</em> <code>reductio</code> may not even need to be a keyword I guess.</p>
-<h4 id="introduce"><code>introduce</code><a class="headerlink" href="#introduce" title="Permanent link"></a></h4>
-<p>Sometimes when building proof terms, you may have something that looks like</p>
-<div class="codehilite"><pre>... Nat → Nat → Prop
-</pre></div>
-
-
-<p>where in building the term you&rsquo;d like to reference the actual terms by name that are going to be provided when this proof is used. The name <code>intro</code> borrows from Coq and works in a very similar way. For example,</p>
-<div class="codehilite"><pre>Define Nat.add : Nat → Nat → Nat :=
-    match n
-    | O ↦ m
-    | S ↦ match m
-    | O ↦ O
-    | S m&#39; ↦ S S m&#39;
-    where
-        introduce n,m
-</pre></div>
-
-
-<p><code>introduce</code> will create as many names as you provide that correspond to variables of the parenthetical expressions between outer arrows, from left to right, in the typing of the name <code>Define</code> is currently defining, and stopping at the last outer arrow. An <em>outer</em> arrow is one that isn&rsquo;t contained by any explicit parentheses that begin after the colon. Remember that <code>→</code> associates right, so</p>
-<div class="codehilite"><pre>Nat → Nat → Nat
-</pre></div>
-
-
-<p>parenthetically expands to</p>
-<div class="codehilite"><pre>Nat → (Nat → (Nat))
-</pre></div>
-
-
-<p>making the intro sequence as expected from left to right, one <code>Nat</code> at a time. However, if you had typed <code>add</code> like this</p>
-<div class="codehilite"><pre>Define Nat.add : (Nat → Nat) → Nat :=
-    let
-        introduce f #: Nat → Nat
-    in
-        m n ↦ match n
-              | O ↦ m
-              | S ↦ match m
-              | O ↦ O
-              | S m&#39; ↦ S S m&#39;
-        # didn&#39;t end up using f at all...
-</pre></div>
-
-
-<p>things wouldn&rsquo;t be working out as planned probably, since <code>f</code> is a single-arity function and not really useful in the example.</p>
-<p>Also remember that if you already named the variables on either side of the colon in a way like this</p>
-<div class="codehilite"><pre>Define Nat.add (n:Nat) : ∀ (m:Nat), Nat :=
-    match n
-    | O ↦ m
-    | S ↦ match m
-    | O ↦ O
-    | S m&#39; ↦ S S m&#39;
-# n and m were named as variables already
-</pre></div>
-
-
-<p>then you don&rsquo;t need to use intro at all! These techniques can be combined as well:</p>
-<div class="codehilite"><pre>Define Nat.make_adder (n:Nat) : Nat → Nat :=
-    match n
-    | O ↦ m
-    | S ↦ match m
-    | O ↦ O
-    | S m&#39; ↦ S S m&#39;
-    where
-        introduce m
-</pre></div>
-
-
-<p>This may seem like a sort of gimmick, but it actually is a great way to make you code readable when you start to have complicated <code>let</code> or <code>where</code> clauses in which you either nest clauses or work with subgoals. Note that when you nest <code>where</code>s, the outer name&rsquo;s signature will not be avaliable to <code>introduce</code>, and only the <code>where</code> clause&rsquo;s immediate target will be. For example,</p>
-<div class="codehilite"><pre>Define true_eq_true : true = true :=
-    reductio pf
-    where
-        pf : true ≠ true → False := counter
-        where
-            introduce true_neq_true
-            counter := contradiction
-                (reflexivity true)
-                true_neq_true
-</pre></div>
-
-
-<p>At the second <code>where</code> we are entering name &ldquo;pf&rdquo;, so the introduction expressions order looks like, from this scope,</p>
-<div class="codehilite"><pre>true ≠ true → False
-</pre></div>
-
-
-<p>This is important because when <code>introduce</code> is used, it takes the <code>true ≠ true</code>.</p>
-<h4 id="let-in"><code>let</code> &hellip; <code>in</code><a class="headerlink" href="#let-in" title="Permanent link"></a></h4>
+<p>to have the right type for <code>reductio</code> to use, so the term is successfully defined!</p>
+<p><em>Note:</em> <code>reductio</code> may not even need to be a keyword I guess I just have to define it properly.</p>
+<h4 id="letin"><code>let</code>,<code>in</code><a class="headerlink" href="#letin" title="Permanent link"></a></h4>
 <p>Starting an expression with <code>let</code> indicates that everything between the <code>let</code> and following <code>in</code> should be treated as locally defined in a scope containing the expressions after the <code>let</code> and the final expression after the <code>in</code>, and this local scope cannot be accessed from outside (its a temporary scope). For example,</p>
 <div class="codehilite"><pre>Define x :=
     let
@@ -1594,9 +1552,9 @@ Compute x #&gt; 6
 </pre></div>
 
 
-<p>Only <code>Define</code> headers may be used inside the <code>let</code>&hellip;<code>in</code> clause, and if they are left out they are implied, as they are in the example above.</p>
+<p>Only <code>Define</code> headers may be used inside the <code>let</code>,<code>in</code> clause, and if they are left out they are implied, as they are in the example above.</p>
 <h4 id="where"><code>where</code><a class="headerlink" href="#where" title="Permanent link"></a></h4>
-<p><code>where</code> clauses work in the same way as <code>let</code>&hellip;<code>in</code> clause, but with a different ordering. Ending an expression with <code>where</code> indicates that the clause following the <code>where</code> will be a temporary scope in following the same rules as a <code>let</code>&hellip;<code>in</code> that is accessable by the expression preceeding the <code>where</code>. Rewriting the example in <code>let</code>&hellip;<code>in</code> section,</p>
+<p><code>where</code> clauses work in the same way as <code>let</code>,<code>in</code> clause, but with a different ordering. Ending an expression with <code>where</code> indicates that the clause following the <code>where</code> will be a temporary scope in following the same rules as a <code>let</code>,<code>in</code> that is accessable by the expression preceeding the <code>where</code>. Rewriting the example in <code>let</code>,<code>in</code> section,</p>
 <div class="codehilite"><pre>Define x := a + b + c
     where
         a := 1
@@ -1605,13 +1563,97 @@ Compute x #&gt; 6
 </pre></div>
 
 
-<p>Deciding between <code>let</code>&hellip;<code>in</code> clauses and <code>where</code> clauses is a purely aesthetic desicion.</p>
+<p>Deciding between <code>let</code>,<code>in</code> clauses and <code>where</code> clauses is a purely aesthetic desicion.</p>
+<h4 id="introduce"><code>introduce</code><a class="headerlink" href="#introduce" title="Permanent link"></a></h4>
+<p>Sometimes when building proof terms, you may have something that looks like</p>
+<div class="codehilite"><pre>... Nat → Nat → Prop
+</pre></div>
+
+
+<p>where in building the term you&rsquo;d like to reference the actual terms by name that are going to be provided when this proof is used. The name <code>intro</code> borrows from Coq and works in a very similar way. For example,</p>
+<div class="codehilite"><pre>Recursive Nat.add : Nat → Nat → Nat :=
+    match n,m
+    | O  , _   ↦ n
+    | _  , O   ↦ m
+    | S q, S r ↦ S S (Nat.add q r)
+    where
+        introduce n,m
+</pre></div>
+
+
+<p><code>introduce</code> will create as many names as you provide that correspond to variables of the parenthetical expressions between outer arrows, from left to right, in the typing of the name <code>Recursive</code> is currently defining, and stopping at the last outer arrow. An <em>outer</em> arrow is one that isn&rsquo;t contained by any explicit parentheses that begin after the colon. Remember that <code>→</code> associates right, so</p>
+<div class="codehilite"><pre>Nat → Nat → Nat
+</pre></div>
+
+
+<p>parenthetically expands to</p>
+<div class="codehilite"><pre>Nat → (Nat → (Nat))
+</pre></div>
+
+
+<p>making the intro sequence as expected from left to right, one <code>Nat</code> at a time. However, if you had typed <code>add</code> like this</p>
+<div class="codehilite"><pre>Recursive Nat.add : (Nat → Nat) → Nat :=
+    let
+        introduce f #: Nat → Nat
+    in
+        # don&#39;t end up using f at all...
+        n m ↦
+        match n,m
+        | O  , _   ↦ n
+        | _  , O   ↦ m
+        | S q, S r ↦ S S (Nat.add q r)
+</pre></div>
+
+
+<p>things wouldn&rsquo;t be working out as planned probably, since <code>f</code> is a single-arity function and not really useful in the example.</p>
+<p>Also remember that if you already named the variables on either side of the colon in a way like this</p>
+<div class="codehilite"><pre>Recursive Nat.add (n:Nat) : ∀ (m:Nat), Nat :=
+    match n,m
+    | O  , _   ↦ n
+    | _  , O   ↦ m
+    | S q, S r ↦ S S (Nat.add q r)
+# n and m were named as variables already
+</pre></div>
+
+
+<p>then you don&rsquo;t need to use intro at all! These techniques can be combined as well:</p>
+<div class="codehilite"><pre>Recursive Nat.make_adder (n:Nat) : Nat → Nat :=
+    match n,m
+    | O  , _   ↦ n
+    | _  , O   ↦ m
+    | S q, S r ↦ S S (Nat.add q r)
+    where
+        introduce m
+</pre></div>
+
+
+<p>This may seem like a sort of gimmick, but it actually is a great way to make you code readable when you start to have complicated <code>let</code> or <code>where</code> clauses in which you either nest clauses or work with subgoals. Note that when you nest <code>where</code>s, the outer name&rsquo;s signature will not be avaliable to <code>introduce</code>, and only the <code>where</code> clause&rsquo;s immediate target will be. For example,</p>
+<div class="codehilite"><pre>Define true_eq_true : true = true :=
+    let
+        r_pf : true ≠ true → False := counter
+            where
+                introduce true_neq_true
+                counter := contradiction
+                    (reflexivity true)
+                    true_neq_true
+    in
+        reductio r_pf
+</pre></div>
+
+
+<p>At the second <code>where</code> we are entering name &ldquo;pf&rdquo;, so the introduction expressions order looks like, from this scope,</p>
+<div class="codehilite"><pre>true ≠ true → False
+</pre></div>
+
+
+<p>This is important because when <code>introduce</code> is used, it takes the <code>true ≠ true</code>.</p>
 <h6 id="_1"><code>:</code><a class="headerlink" href="#_1" title="Permanent link"></a></h6>
 <h6 id="_2"><code>→</code><a class="headerlink" href="#_2" title="Permanent link"></a></h6>
 <h6 id="_3"><code>|</code><a class="headerlink" href="#_3" title="Permanent link"></a></h6>
 <h6 id="_4"><code>↦</code><a class="headerlink" href="#_4" title="Permanent link"></a></h6>
 <h6 id="_5"><code>∀</code><a class="headerlink" href="#_5" title="Permanent link"></a></h6>
 <h6 id="_6"><code>∃</code><a class="headerlink" href="#_6" title="Permanent link"></a></h6>
+<p>See <a href="#exists-statement">Exists Statement</a></p>
 <h2 id="type-judgements">Type Judgements<a class="headerlink" href="#type-judgements" title="Permanent link"></a></h2>
 <p>A type judgement is of the form</p>
 <div class="codehilite"><pre>term : type
@@ -1837,9 +1879,11 @@ Pattern &quot;∃ x, Px&quot;
 </tbody>
 </table>
 <h2 id="compilation">Compilation<a class="headerlink" href="#compilation" title="Permanent link"></a></h2>
-<p>Compiling a Craft program is divided into two phases.</p>
-<h3 id="expansion">Expansion<a class="headerlink" href="#expansion" title="Permanent link"></a></h3>
-<p>First, the compiler scans through the  program and fully expands all expressions. This means adding in parentheses and seperating variable spaces and all that, as well as shifting everything other than names to the right of the type judgement <code>:</code>s. Observe:</p>
+<p>Compiling a Craft program is divided into several phases:</p>
+<ol>
+<li><strong>Expansion</strong></li>
+</ol>
+<p>The compiler scans through the  program and fully expands all expressions. This means adding in parentheses and seperating variable spaces and all that, as well as shifting everything other than names to the right of the type judgement <code>:</code>s. Observe:</p>
 <div class="codehilite"><pre>Define f x := x + 1
 Define lemma : ∃ (x y:Bool), x = y ∧ x = false
 </pre></div>
@@ -1868,9 +1912,9 @@ Define lemma : ∃ (x y:Bool), x = y ∧ x = false
     )
     (:)
     (
-        (∃ (x:Bool)),
+        ((∃) (x:Bool)),
         (
-            (∃ (y:Bool)),
+            ((∃) (y:Bool)),
             (
                 ( ((x) =) (y) )
                 (∧)
@@ -1882,22 +1926,66 @@ Define lemma : ∃ (x y:Bool), x = y ∧ x = false
 </pre></div>
 
 
-<p>The parentheses all are exactly resulting from associativity rules.</p>
-<h3 id="parsing">Parsing<a class="headerlink" href="#parsing" title="Permanent link"></a></h3>
-<p>Next, the compiler scans through the pro</p>
-<h3 id="type-checking">Type Checking<a class="headerlink" href="#type-checking" title="Permanent link"></a></h3>
-<h3 id="value-computation">Value Computation<a class="headerlink" href="#value-computation" title="Permanent link"></a></h3>
+<p>The parentheses all are exactly resulting from associativity rules. The <code>?</code>s indicates that a typing was expected, but none was given explicitly. So, the <code>?</code>s are to be infered by the type checking process.</p>
+<ol>
+<li><strong>Patterns</strong></li>
+</ol>
+<p>The compiler specifically looks for <code>Pattern</code> declarations, and ignores everything else. The scope of the <code>Pattern</code> declarations are noted.</p>
+<ol>
+<li><strong>Parsing</strong></li>
+</ol>
+<p>THe compiler makes sure that syntax rules are followed correctly in all lines of the program. Instances where a pattern <em>may</em> be applied are tagged with the possible patterns that could possibly apply there. In the type checking phase, the correct interpretation (if any) will be determined. Errors that result from this pattern parsing (if no possible interpretation type-checks) will be a type checking error thrown in the next section.</p>
+<ol>
+<li><strong>Type Checking</strong></li>
+</ol>
+<p>Next, the type checker checks each module, in a tree leaf-to-root fashion of independence, for correct typings.</p>
+<ol>
+<li><strong>Execution</strong></li>
+</ol>
+<p><code>Execute</code>s are run.</p>
 <h2 id="values">Values<a class="headerlink" href="#values" title="Permanent link"></a></h2>
-<h3 id="referencing-values">Referencing Values<a class="headerlink" href="#referencing-values" title="Permanent link"></a></h3>
-<p>When you write something like</p>
+<p>Value are represented differently in three sequencial phases.</p>
+<ol>
+<li><strong>Referencing Values</strong></li>
+</ol>
+<p>Lazily-bound value are how your names are initially interpretted by the compiler. When you write something like</p>
 <div class="codehilite"><pre>Define x : Nat := 1
 </pre></div>
 
 
-<p>The name is <code>x</code> and the referenced value is <code>1</code>. </p>
-<p>the value of <code>1</code> is bound to the name <code>x</code>. TODO</p>
-<h3 id="computing-values">Computing Values<a class="headerlink" href="#computing-values" title="Permanent link"></a></h3>
-<h3 id="returning-values">Returning Values<a class="headerlink" href="#returning-values" title="Permanent link"></a></h3>
+<p>The name <code>x</code> is bound to the value <code>1</code>. This means that, via a beta-reduction application, <code>x</code> reduces to <code>1</code>. However, this reduction is only guranteed to have been performed by then end of the <code>Reducing Values</code> step.</p>
+<p>This type of reduction applies to functions as well. For example in,</p>
+<div class="codehilite"><pre>Define not (b:Bool) := match b | true↦false | false↦true
+Define not_false := not false
+</pre></div>
+
+
+<p><code>not_false</code> is bound to <code>not false</code>. Only via a beta-reduction step can we reduce this binding to <code>true</code>.</p>
+<ol>
+<li><strong>Reducing Values</strong></li>
+</ol>
+<p>Values are &lsquo;computed&rsquo; via applying beta-reduction until terms are completely reduced. For example, if we had</p>
+<div class="codehilite"><pre>Define a := 1
+Define b (x:Nat) := a
+Define c := b 2
+Define d := c
+</pre></div>
+
+
+<p>the then the steps to find the value of <code>Compute c</code> are</p>
+<div class="codehilite"><pre>Compute c
+==&gt; d
+==&gt; c
+==&gt; b 2
+==&gt; a
+==&gt; 1
+</pre></div>
+
+
+<ol>
+<li><strong>Returning Values</strong></li>
+</ol>
+<p>The process of <em>returning</em> is critically different from the process of <em>computing/reducing</em>. All terms can reduce, but only <em>executable</em> terms can return. So what&rsquo;s an executable term? Generally, these are referred to as monads. Monads are special in that they do not describe a value but instead describe a process for obtaining a value. A Monad always has specifies its return type as the type of the term that can be expected to be obtained when the monad is executed. To obtain this value, use the header <a href="#execute"><code>Execute</code></a>, as described in the Headers section.</p>
 <h2 id="scopes">Scopes<a class="headerlink" href="#scopes" title="Permanent link"></a></h2>
 <h3 id="named-scopes">Named Scopes<a class="headerlink" href="#named-scopes" title="Permanent link"></a></h3>
 <h4 id="unparametrized-scopes">Unparametrized Scopes<a class="headerlink" href="#unparametrized-scopes" title="Permanent link"></a></h4>
