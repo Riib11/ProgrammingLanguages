@@ -571,9 +571,14 @@ then you don't need to use intro at all! These techniques can be combined as wel
         match n,m
         | O  , _   ↦ n
         | _  , O   ↦ m
-        | S q, S r ↦ S S (Nat.add q r)
+        | S q, S r ↦ S S (Nat.make_adder q r)
         where
             introduce m
+
+    Recursive Nat.make_adder (n:Nat) : Nat → Nat :=
+        match n
+        | O   ↦ m ↦ n
+        | S q ↦ m ↦ S (Nat.make_adder q m)
 
 This may seem like a sort of gimmick, but it actually is a great way to make you code readable when you start to have complicated `let` or `where` clauses in which you either nest clauses or work with subgoals. Note that when you nest `where`s, the outer name's signature will not be avaliable to `introduce`, and only the `where` clause's immediate target will be. For example,
 
