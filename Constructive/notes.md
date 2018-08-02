@@ -1,4 +1,4 @@
-# Craft
+# Constructive
 
 A dependently-type programming language with rewrite-based syntax designed to be a simple and single.
 
@@ -800,7 +800,7 @@ The rules for associativity are outlined here, in order from greatest to least p
 
 ## Compilation
 
-Compiling a Craft program is divided into several phases:
+Compiling a Constructive program is divided into several phases:
 
 1. **Expansion**
 

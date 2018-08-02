@@ -1,0 +1,7 @@
+Define greet : String -> String
+    := ( name : String )
+    => " Hello there, " + name
+
+Define greet
+    := ( name : String )
+    => " Hello there, " + name
