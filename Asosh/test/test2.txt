@@ -1,1 +1,26 @@
-•title •{ This is a title }•
+Define + : Nat -> Nat
+    := (a : Nat) (b : Nat)
+    => match b
+        | O => a
+        | S b' => S (a + b')
+
+Built-in Syntactical forms:
+    Define { Define $name : $type := $term}
+    Axiom  { Axiom  $name : $type }
+    match { match $term with | (form1) => $term1 ... | (formn) => $termn }
+    let ... in {
+        let $name1 = $term1, ..., $namen = $termn
+        in $term
+    }
+    where {
+        $term1
+        where $name1 = $term1, ..., $namen = $termn
+    }
+    -> { $type -> $type }
+    => { $name1 ... $namen => $term }
+    : { $term : $type }
+    @ { @$term }
+    . { $term . $term }
+    " { "everything in here is treated as a string" }
+    ! { !$term }
+    # { # everything in this is a comment # }

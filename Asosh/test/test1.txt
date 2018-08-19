@@ -1,7 +1,83 @@
-Define greet : String -> String
-    := ( name : String )
-    => " Hello there, " + name
+--------------------------------------------------------
+- Notes
+--------------------------------------------------------
 
-Define greet
-    := ( name : String )
-    => " Hello there, " + name
+Special Syntax characters
+(are automatically seperated in strings)
+
+( ) { } [ ] "
+: -> => | ,
+$ . ! @ #
+
+Note that many operators are not included above, such as
+- + * / ^ % < > '
+
+This allows you to customize these for your liking!
+I decided to allow this because these symbols are often
+used differently in seperate mathematical contexts,
+and not being able to customize them makes it so you
+have to use annoyingly-long function names to do
+write simple expressions, when the syntax SHOULD
+be your friend and tool!
+
+--------------------------------------------------------
+- Define
+--------------------------------------------------------
+
+Define greet : String -> String
+    := name : String
+    => "Hello there, " + name
+
+Define (greet)
+    : (
+        (String) -> (String)
+    )
+    := (
+        (
+            ( (name) : (String) )
+        )
+        => (
+            ("Hello there, ") + (name)
+        )
+    )
+
+Define add : Int -> Int := (x:Int) (y:Int) => x + y
+
+Define (add)
+    : (
+        (Int) -> (Int)
+    )
+    := (
+        ( (x) : (Int) )
+        ( (y) : (Int) )
+    )
+    => (
+        (x) + (y)
+    )
+
+--------------------------------------------------------
+- Axiom
+--------------------------------------------------------
+
+Axiom Nat : Set := | O : Nat | S n : Nat -> Nat
+
+Axiom (Nat)
+    : (
+        (Set)
+    )
+    := (
+        | (
+            (O) : (Nat)
+        )
+        | (
+            ( (S) (n) ) : ( (Nat) -> (Nat) )
+        ) 
+    )
+
+# types
+
+Axiom (Type) : (Type)
+
+Axiom (Bool)  : (Set)
+Axiom (True)  : (Bool)
+Axiom (False) : (Bool)
