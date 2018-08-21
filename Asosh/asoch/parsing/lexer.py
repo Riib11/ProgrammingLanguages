@@ -7,25 +7,30 @@ class Block:
         self.attr = {}
         self.content = []
     def set_attr(self,k,v): self.attr[k] = v
+    def get_attr(self,k): return self.attr[k]
     def add(self,x): self.content.append(x)
     def tostring(self):
         s = ("<" + str(self.__class__.__name__) + " " + " ".join([f"{k}={v}" for k,v in self.attr.items()])).strip()
         s += ">"
-        s += "{" + " ".join(map(str,self.content)) + "}"
+        if len(self.content) > 0:
+            s += "{" + " ".join(map(str,self.content)) + "}"
         return s
     __str__ = tostring; __repr__ = tostring
+
+class Container(Block): pass
+
 
 headers = ["Define", "Axiom"]
 
 # Define:
 # - name: Name
-# - type: Type
+# - type: Signature
 # - term: Term 
 class Define(Block): pass
 
 # Axiom
 # - name: Name
-# - type: Type
+# - type: Signature
 class Axiom(Block): pass
 
 # Name
@@ -35,14 +40,14 @@ class Name(Block): pass
 # Term
 class Term(Block): pass
 
-# Type
-class Type(Block): pass
+# Signature
+class Signature(Block): pass
 
 #
 #
 #
 
-block = Block(None)
+block = Container(None)
 ss = ""
 
 def lex(string):
@@ -54,11 +59,16 @@ def lex(string):
     # block manipulation
     #
 
-    def enterblock(B):
+    def enterblock(B, attr=None):
         global block
-        b = B(block)
-        block.add(b)
-        block = b
+        if attr:
+            b = B(block)
+            block.set_attr(attr, b)
+            block = b
+        else:
+            b = B(block)
+            block.add(b)
+            block = b
     
     def exitblock():
         global block
@@ -70,16 +80,16 @@ def lex(string):
 
     def lex_name():
         global ss
-        enterblock(Name)
+        enterblock(Name, "name")
         block.add(ss[0])
         exitblock()
         ss = ss[1:]
         if ss[0] == ":":
             ss = ss[1:]
 
-    def lex_type():
+    def lex_typesiganture():
         global ss
-        enterblock(Type)
+        enterblock(Signature, "sign")
         for i in range(len(ss)):
             # print("type:",i,ss)
             s = ss[i]
@@ -92,7 +102,7 @@ def lex(string):
 
     def lex_term():
         global ss
-        enterblock(Term)
+        enterblock(Term, "term")
         for i in range(len(ss)):
             # print("term:",i,ss)
             s = ss[i]
@@ -110,14 +120,14 @@ def lex(string):
             enterblock(Define)
             ss = ss[1:]
             lex_name()
-            lex_type()
+            lex_typesiganture()
             lex_term()
             exitblock()
         elif "Axiom" == s:
             enterblock(Axiom)
             ss = ss[1:]
             lex_name()
-            lex_type()
+            lex_typesiganture()
             exitblock()
 
     while len(ss) > 0: lex_helper()
