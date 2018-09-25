@@ -33,6 +33,10 @@ class Define(Block): pass
 # - type: Signature
 class Axiom(Block): pass
 
+# Compute
+# - term: Term
+class Compute(Block): pass
+
 # Name
 # - string: String
 class Name(Block): pass
@@ -91,7 +95,6 @@ def lex(string):
         global ss
         enterblock(Signature, "sign")
         for i in range(len(ss)):
-            # print("type:",i,ss)
             s = ss[i]
             if s in syntax.block_separate:
                 exitblock()
@@ -104,7 +107,6 @@ def lex(string):
         global ss
         enterblock(Term, "term")
         for i in range(len(ss)):
-            # print("term:",i,ss)
             s = ss[i]
             if s in syntax.block_separate:
                 exitblock()
@@ -128,6 +130,11 @@ def lex(string):
             ss = ss[1:]
             lex_name()
             lex_typesiganture()
+            exitblock()
+        elif "Compute" == s:
+            enterblock(Compute)
+            ss = ss[1:]
+            lex_term()
             exitblock()
 
     while len(ss) > 0: lex_helper()
