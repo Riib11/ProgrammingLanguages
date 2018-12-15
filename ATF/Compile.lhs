@@ -5,6 +5,7 @@
 
 \usepackage{verbatim}
 \newenvironment{code}{\verbatim}{\endverbatim\normalsize}
+\usepackage[margin=1in]{geometry}
 
 \newcommand{\tc}[1]{\texttt{#1}}
 \chardef\_=`_

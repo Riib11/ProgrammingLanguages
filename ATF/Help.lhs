@@ -5,6 +5,7 @@
 
 \usepackage{verbatim}
 \newenvironment{code}{\verbatim}{\endverbatim\normalsize}
+\usepackage[margin=1in]{geometry}
 
 \newcommand{\tc}[1]{\texttt{#1}}
 
@@ -13,11 +14,11 @@
 %-------------------------------------------------------------------------------
 
 \begin{center}
-\Huge{ATF Main}
+\Huge{ATF Help}
 \\[0.75cm]
 \end{center}
 
-\section{The Main Method}
+\section{Help with Topics}
 
 %///////////////////////////////////////////////
 \begin{code}
