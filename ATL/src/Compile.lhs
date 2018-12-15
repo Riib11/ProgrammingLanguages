@@ -51,16 +51,29 @@ extract_block_begin t =
             else helper bs
     in helper blocks
 
+is_end_of :: Token -> Block -> Bool
+is_end_of t b =
+    let token_end = block_token_end b
+    in t == token_end || (t == "\n" && token_end == " ")
+
 -- =--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=-
 -- =--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=-
 
 blocks =
-    -- headers
-    [ Block "header-5" "#####" "\n" "<h5 class=\"header-5\">" "</h5>"
-    , Block "header-4" "####"  "\n" "<h4 class=\"header-5\">" "</h4>"
-    , Block "header-3" "###"   "\n" "<h3 class=\"header-5\">" "</h3>"
-    , Block "header-2" "##"    "\n" "<h2 class=\"header-5\">" "</h2>"
-    , Block "header-1" "#"     "\n" "<h1 class=\"header-5\">" "</h1>"
+    -- line styles
+    [ Block "line-h5"     "#####"  "\n" "<h5 class=\"line-h5\">" "</h5>"
+    , Block "line-h4"     "####"   "\n" "<h4 class=\"line-h4\">" "</h4>"
+    , Block "line-h3"     "###"    "\n" "<h3 class=\"line-h3\">" "</h3>"
+    , Block "line-h2"     "##"     "\n" "<h2 class=\"line-h2\">" "</h2>"
+    , Block "line-h1"     "#"      "\n" "<h1 class=\"line-h1\">" "</h1>"
+    , Block "line-quote"  ">" "\n" "<div class=\"line-quote\">"  "</div>"
+    , Block "line-bullet" "-" "\n" "<div class=\"line-bullet\">" "</div>"
+
+    -- block styles
+    , Block "block-math"  ""  "$$"  "<div class=\"block-math\">" "</div>"
+    , Block "block-code"  "```" "```" "<div class=\"block-code\">" "</div>"
+    , Block "block-image" "{" "}" "<img src=\"" "\">"
+    , Block "block-link"  "[" "]" "<a href=\"" "\">hard-coded link</a>"
     -- inline styles
     , Block "inline-bold"   "**" "**" "<span class=\"inline-bold\">"   "</span>"
     , Block "inline-italic" "*"  "*"  "<span class=\"inline-italic\">" "</span>"
@@ -68,12 +81,11 @@ blocks =
     , Block "inline-mline"  "--" "--" "<span class=\"inline-mline\">"  "</span>"
     , Block "inline-math"   "$"  "$"  "<span class=\"inline-math\">"   "</span>"
     , Block "inline-code"   "`"  "`"  "<span class=\"inline-code\">"   "</span>"
-    -- line styles
-    , Block "line-quote"  ">" "\n" "<div class=\"line-quote\">"  "</div>"
-    , Block "line-bullet" "-" "\n" "<div class=\"line-bullet\">" "</div>"
-    -- block styles
-    , Block "block-math" "$$"  "$$"  "<div class=\"block-math\">" "</div>"
-    , Block "block-code" "```" "```" "<div class=\"block-code\">" "</div>"
+    
+    
+    -- comment
+    , Block "line-comment"  "//"  "\n"  "" ""
+    , Block "block-comment" "///" "///" "" ""
     -- escape
     , Block "word-escape" "\\" " " "" ""
     ]
@@ -94,7 +106,7 @@ compile ts =
         helper (t:ts) mb_block = case mb_block of
             Nothing -> recurse t ts mb_block -- at top level call
             Just b ->                        -- at lower level recurse
-                if t == block_token_end b       -- at end of sub-block?
+                if t `is_end_of` b           -- at end of sub-block?
                     then (ts, block_code_end b) -- end sub-block
                     else recurse t ts mb_block  -- recurse
         recurse :: Token -> [Token] -> Maybe Block -> ([Token], Code)
