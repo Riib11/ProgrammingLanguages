@@ -47,8 +47,7 @@ help_topics =
         , "    This commpand prints a helpful illustration description of the"
         , "    usage syntax and execution details about the given topic. For"
         , "    example, I would recommend running `atf help compile`." ] )
-    , ("all", [])
-    ]
+    , ("all", []) ]
 
 print_help_topic :: HelpTopic -> IO ()
 print_help_topic (topic, content)
