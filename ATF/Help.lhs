@@ -19,7 +19,7 @@
 
 \section{The Main Method}
 
-%------------------------------------------------
+%///////////////////////////////////////////////
 \begin{code}
 
 module Help (help) where
@@ -37,14 +37,14 @@ help_topics =
         , "    (atf_tgt) are specified by L.atf_lang."
         , "Details:"
         , "    L.arg_lang is written in a language-specification format that"
-        , "    is immediately compilable by atf. L, the compiled specification,"
-        , "    is then used to parse and transpile each xi.atf_src into a"
-        , "    corresponding xi.atf_tgt file." ] )
+        , "    is immediately compatible with atf. L, the compiled"
+        , "    specification, which is then used to parse and transpile each"
+        , "    xi.atf_src into a corresponding xi.atf_tgt file." ] )
     , ("help",
         [ "Usage:"
         , "    $> atf help <topic>"
         , "Description:"
-        , "    This commpand prints a helpful illustration description of the"
+        , "    This command prints a helpful illustration description of the"
         , "    usage syntax and execution details about the given topic. For"
         , "    example, I would recommend running `atf help compile`." ] )
     , ("all",
@@ -74,7 +74,7 @@ help topic = case extract_help_topic topic of
     Just ht -> print_help_topic ht
 
 \end{code}
-%------------------------------------------------
+%\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 %-------------------------------------------------------------------------------
 \end{document}
