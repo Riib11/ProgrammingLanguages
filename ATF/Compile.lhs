@@ -40,8 +40,19 @@ module Compile
 ( compile
 ) where
 
-compile :: String -> [String] -> IO ()
+type Token = String
+
+reserved_tokens :: [(String, Token)]
+reserved_tokens =
+    [ ("paren-begin", "(" )
+    , ("paren-close", ")" )
+    ]
+
+compile :: String -> [String] -> [IO ()]
 compile _ _ = error "unimplemented"
+-- compile l xs = map compile_source (compile_language l) xs
+
+
 
 \end{code}
 %------------------------------------------------

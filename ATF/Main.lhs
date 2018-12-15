@@ -36,10 +36,23 @@ main = do
         "help" : []              -> help "all"
         "help" : topic : []      -> help topic
         "compile" : []           -> help "compile"
-        "compile" : fn_lang : xs -> compile fn_lang xs
+        "compile" : fn_lang : xs -> do
+            putStrLn $ "-------------------------------------------------------"
+            putStrLn $ "compiling with:"
+            putStrLn $ "- language: " ++ fn_lang
+            putStrLn $ "- sources:  " ++ (list_to_string xs)
+            putStrLn $ "-------------------------------------------------------"
+            putStrLn $ "compilation status:"
+            foldl (>>) (putStr "") $ compile fn_lang xs
         -- other commands
         command : _ -> error $ "unrecognized command: " ++ command
         []          -> error "use `atf help <topic>` for help"
+
+list_to_string :: [String] -> String
+list_to_string ss = case ss of
+    []       -> ""
+    (x:[])   -> x
+    (x:y:xs) -> x ++ ", " ++ y ++ (list_to_string xs)
 
 \end{code}
 %------------------------------------------------

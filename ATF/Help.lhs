@@ -47,11 +47,15 @@ help_topics =
         , "    This commpand prints a helpful illustration description of the"
         , "    usage syntax and execution details about the given topic. For"
         , "    example, I would recommend running `atf help compile`." ] )
-    , ("all", []) ]
+    , ("all",
+        [ "ATF Commands:"
+        , "    help <topic>"
+        , "    compile <lang-spec> <source-1> ... <source-N>" ] )
+    ]
 
 print_help_topic :: HelpTopic -> IO ()
 print_help_topic (topic, content)
-    = foldr (>>) (putStr "")
+    = foldl (>>) (putStr "")
     $ map putStrLn
     $ ("help for \"" ++ topic ++ "\":\n") : content
 
