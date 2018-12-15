@@ -29,35 +29,90 @@ import Parse
 
 type Code = String
 
-data Tag = Tag
-    { token_begin :: String
-    , token_end   :: String
-    , code_begin  :: Code
-    , code_end    :: Code }
+data Block = Block
+    { block_name         :: String
+    , block_token_begin :: Token
+    , block_token_end   :: Token
+    , block_code_begin   :: Code
+    , block_code_end     :: Code }
 
-title = Tag "#" "\n" "<h1>" "</h1>"
+instance Show Block where
+    show (Block name tokn_b tokn_e code_b code_e) =
+        code_b ++ " " ++ code_e
 
-compile_tag :: Tag -> [Token] -> Code
+-- if the token begins a block, returns that block
+-- otherwise, returns Nothing
+extract_block_begin :: Token -> Maybe Block
+extract_block_begin t =
+    let helper :: [Block] -> Maybe Block
+        helper [] = Nothing
+        helper (b:bs) = if t == block_token_begin b
+            then Just b
+            else helper bs
+    in helper blocks
 
-compile_tag tag ts =
-    let helper [] = ""
-        x:xs = if x == token_end
-            then code_end ++ compile xs
-            else x ++ compile xs
-    in helper ts
+-- =--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=-
+-- =--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=-
+
+blocks =
+    -- headers
+    [ Block "header-5" "#####" "\n" "<h5 class=\"header-5\">" "</h5>"
+    , Block "header-4" "####"  "\n" "<h4 class=\"header-5\">" "</h4>"
+    , Block "header-3" "###"   "\n" "<h3 class=\"header-5\">" "</h3>"
+    , Block "header-2" "##"    "\n" "<h2 class=\"header-5\">" "</h2>"
+    , Block "header-1" "#"     "\n" "<h1 class=\"header-5\">" "</h1>"
+    -- inline styles
+    , Block "inline-bold"   "**" "**" "<span class=\"inline-bold\">"   "</span>"
+    , Block "inline-italic" "*"  "*"  "<span class=\"inline-italic\">" "</span>"
+    , Block "inline-uline"  "~~" "~~" "<span class=\"inline-uline\">"  "</span>"
+    , Block "inline-mline"  "--" "--" "<span class=\"inline-mline\">"  "</span>"
+    , Block "inline-math"   "$"  "$"  "<span class=\"inline-math\">"   "</span>"
+    , Block "inline-code"   "`"  "`"  "<span class=\"inline-code\">"   "</span>"
+    -- line styles
+    , Block "line-quote"  ">" "\n" "<div class=\"line-quote\">"  "</div>"
+    , Block "line-bullet" "-" "\n" "<div class=\"line-bullet\">" "</div>"
+    -- block styles
+    , Block "block-math" "$$"  "$$"  "<div class=\"block-math\">" "</div>"
+    , Block "block-code" "```" "```" "<div class=\"block-code\">" "</div>"
+    -- escape
+    , Block "word-escape" "\\" " " "" ""
+    ]
+
+blocknames_nosub =
+    [ "inline-math", "inline-code"
+    , "block-math", "block-code"
+    , "word-escape" ]
+
+-- =--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=-
+-- =--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=-
 
 compile :: [Token] -> Code
-compile ts = case ts of
-    "#" : ts -> "<h1>" ++
-        let helper [] = []
-            helper (x:xs) = case x of
-                "\n" -> "</h1>\n" ++ compile xs
-                _    -> x ++ helper xs
-        in helper ts
-    _ -> ""
-
--- =--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=-
--- =--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=-
+compile ts =
+    let helper :: [Token] -> Maybe Block -> ([Token], Code)
+        helper [] Nothing  = ([], "")
+        helper [] (Just _) = error "ATL Compile: missing block-end"
+        helper (t:ts) mb_block = case mb_block of
+            Nothing -> recurse t ts mb_block -- at top level call
+            Just b ->                        -- at lower level recurse
+                if t == block_token_end b       -- at end of sub-block?
+                    then (ts, block_code_end b) -- end sub-block
+                    else recurse t ts mb_block  -- recurse
+        recurse :: Token -> [Token] -> Maybe Block -> ([Token], Code)
+        recurse t ts mb_block =
+            -- token begins a new sub-block?
+            case extract_block_begin t of
+                Nothing -> -- t is literal token
+                    let (ts_next, code_next) = helper ts mb_block
+                    in (ts_next, t ++ code_next)
+                Just bn -> -- t is block begin token
+                    let code_begin = block_code_begin bn         -- sub-recurse
+                        (ts_sub, code_sub) = helper ts (Just bn) -- recurse
+                        (ts_next, code_next) = helper ts_sub mb_block
+                    in (ts_next, code_begin ++ code_sub ++ code_next)
+        -- `Nothing` represents top-level block
+        (_, compiled_code) = helper ts Nothing
+    in
+        compiled_code
 
 \end{code}
 %------------------------------------------------

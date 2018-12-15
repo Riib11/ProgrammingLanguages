@@ -3,18 +3,15 @@
 ### This is a Title 3
 #### This is a Title 4
 
-*Bold text*
-_Italic text_
+*Italic text*
+**Bold text**
 
 - UL Item
 - UL Item
 
-1. OL Item
-2. OL Item
+![image.png]
 
-![Image](image.png)
-
-[Link](link.png)
+[link.html]
 
 > Block quotes
 > Block quotes

@@ -34,8 +34,9 @@ This module supplies a single function, \tc{parse}, which traslates the text of 
 
 chars_to_separate :: [Char]
 chars_to_separate =
-    [ ' ', '\n'
-    , '#' ]
+    [ ' ', '\n', '\\'
+    , '*', '~', '`', '$'
+    , '[', ']', '{', '}' ]
 
 tokens_to_replace :: Token -> Maybe Token
 tokens_to_replace t = Just t
