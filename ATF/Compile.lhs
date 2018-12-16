@@ -136,23 +136,58 @@ type TargetCode = String
 data Block = Block
 
 compile_source :: Language -> SourceCode -> IO TargetCode
-compile_source lang srccode =
-    let
-        -- separates SourceCode into Tokens, splitting by
-        -- the tokens reserved by the Language
-        separate :: SourceCode -> [Token]
-        separate _ = unimplemented
-        -- breaks Token list into a Block tree
-        interpret_blocks :: [Token] -> Block
-        interpret_blocks _ = unimplemented
-        -- arranges the Block tree into the finalized TargetCode
-        arrange_blocks :: Block -> SourceCode
-        arrange_blocks _ = unimplemented
-    in
-        return
-            $ arrange_blocks $ interpret_blocks $ separate
-            $ srccode
+compile_source lang srccode = return
+    $ arrange_blocks lang
+    $ interpret_blocks lang
+    $ separate lang
+    $ srccode
 
+-- separates SourceCode into Tokens, splitting by
+-- the tokens reserved by the Language
+separate :: Language -> SourceCode -> [Token]
+separate lang srccode =
+    let helper :: SourceCode -> [Token] -> Token -> [Token]
+        helper srccode lang_tkns work_tkn = case (srccode, lang_tkns) of
+            -- finished all of the srccode.
+            -- append work_tkn if its non-empty.
+            ("", _) -> if work_tkn == ""
+                then []
+                else [work_tkn]
+            -- have gone through all tokens, so add the front char
+            -- to the work_tkn, and recurse through all of
+            -- the lang tokens.
+            (c:s, []) -> helper s all_lang_tkns (work_tkn++[c])
+            -- check to see if t extracts from s. if so, then
+            -- prepend t and then restart recurse on rest of srccode.
+            -- prepend work_tkn before the newfound token, if work_tkn
+            -- is non-empty
+            (s, t:ts) -> case t `extracted_from` s of
+                Nothing -> helper s ts work_tkn
+                Just s_rest -> if work_tkn == ""
+                    then t : helper s_rest all_lang_tkns ""
+                    else work_tkn : t : helper s_rest all_lang_tkns ""
+        all_lang_tkns = reserved_tokens lang
+    in helper srccode all_lang_tkns ""
+
+-- breaks Token list into a Block tree
+interpret_blocks :: Language -> [Token] -> Block
+interpret_blocks _ _ = unimplemented
+
+-- arranges the Block tree into the finalized TargetCode
+arrange_blocks :: Language -> Block -> SourceCode
+arrange_blocks _ _ = unimplemented
+
+-- if target is a substring of string and starts at the beginning of string,
+-- then is Just the rest of string after target ends.
+-- otherwise, is Nothing
+extracted_from :: String -> String -> Maybe String
+target `extracted_from` string =
+    case (target, string) of
+        ("", s ) -> Just s
+        (_ , "") -> Nothing
+        (x:xs, s:ss) -> if s == x
+            then xs `extracted_from` ss
+            else Nothing
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
