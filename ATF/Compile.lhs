@@ -159,14 +159,24 @@ lang_md_to_html = Language
     ( make_static_block "wrapper" "<!DOCTYPE html><html>" "</html>" )
     (   -- head
         [ make_static_block "head" "<head>" "</head>" ] )
-    (   -- headers
-        [ make_block "body" ("#####","\n") (join_content "<h5>" "</h5>\n")
-        , make_block "body" ("####","\n")  (join_content "<h4>" "</h4>\n")
-        , make_block "body" ("###","\n")   (join_content "<h3>" "</h3>\n")
-        , make_block "body" ("##","\n")    (join_content "<h2>" "</h2>\n")
-        , make_block "body" ("#","\n")     (join_content "<h1>" "</h1>\n")
+    (   -- line styles
+        [ make_block "body" ("\n- ", "\n")
+            (join_content "<li class=\"line-listitem\">" "</li>\n")
+        , make_block "body" ("#####","\n")
+            (join_content "<div class=\"line-header5\">" "</div>\n")
+        , make_block "body" ("####","\n")
+            (join_content "<div class=\"line-header4\">" "</div>\n")
+        , make_block "body" ("###","\n")
+            (join_content "<div class=\"line-header3\">" "</div>\n")
+        , make_block "body" ("##","\n")
+            (join_content "<div class=\"line-header2\">" "</div>\n")
+        , make_block "body" ("#","\n")
+            (join_content "<div class=\"line-header1\">" "</div>\n")
         -- inline styles
-
+        , make_block "body" ("**","**")
+            (join_content "<span class=\"inline-bold\">" "</span>")
+        , make_block "body" ("*","*")
+            (join_content "<span class=\"inline-italic\">" "</span>")
         ] )
     [ "header", "body", "footer" ]
     (\fp -> fp ++ ".html")
@@ -270,22 +280,22 @@ tokens_to_blocktree lang ts =
     let helper :: [Token] -> Block -> (Block, [Token])
         helper ts work_block = case ts of
             [] -> (work_block, [])
-            -- does token begin new block?
-            (t:ts) -> case block_that_begins_with t of
-                -- token begins new block
-                Just block ->
-                    let new_work_block = add_content 
-                            work_block (Right new_block)
-                        (new_block, ts_rest) = helper ts block
-                    in helper ts_rest new_work_block
-                -- does token end current block?
-                Nothing ->
-                    if (t == (snd $ block_token_bounds work_block)
-                    && ("wrapper" /= block_section work_block))
-                        -- token ends current work_block
-                        then (work_block, ts)
+            (t:ts) ->
+                -- does token end current work_block?
+                if (t == (snd $ block_token_bounds work_block)
+                   && ("wrapper" /= block_section work_block))
+                    -- token ends current work_block
+                    then (work_block, ts)
+                    -- does token begin new block?
+                    else case block_that_begins_with t of
+                        -- token begins new block
+                        Just block ->
+                            let new_work_block = add_content 
+                                    work_block (Right new_block)
+                                (new_block, ts_rest) = helper ts block
+                            in helper ts_rest new_work_block
                         -- token is normal; append to current block
-                        else helper ts $ add_content work_block (Left t)
+                        Nothing -> helper ts $ add_content work_block (Left t)
         block_that_begins_with :: Token -> Maybe Block
         block_that_begins_with t =
             let helper :: [Block] -> Maybe Block
@@ -316,10 +326,10 @@ blocktree_to_targetcode lang wrapper_block =
         add_to_struct x [] = []
         add_to_struct x ((sect, xs) : ss) = case x of
             Left t -> if sect == "body"
-                then (sect, xs ++ [Left t]) : ss
+                then (sect, Left t : xs) : ss
                 else (sect, xs) : add_to_struct x ss
             Right b -> if sect == (block_section b)
-                then (sect, xs ++ [Right b]) : ss
+                then (sect, Right b : xs) : ss
                 else (sect, xs) : add_to_struct x ss
 
         -- creates a structure with all of the language sections, as well
