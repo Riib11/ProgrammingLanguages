@@ -64,7 +64,7 @@ compile fp_lang fp_srcs = do
         map (\fp_src -> do
             putStrLn $ "compiling source: " ++ fp_src
             srccode <- readFile fp_src
-            tgtcode <- compile_source lang fp_src
+            tgtcode <- compile_source lang srccode
             writeFile (lang_convert_filepath lang fp_src) tgtcode)
         fp_srcs
 
@@ -104,21 +104,23 @@ data Language = Language
 
 type TargetCode = String
 
+type BlockItem = Either Token Block
+
 data Block = Block
     { block_section        :: String
     , block_token_bounds   :: (Token, Token)
-    , block_format_content :: [Either Token Block] -> TargetCode
-    , block_content        :: [Either Token Block] }
+    , block_format_contents :: [BlockItem] -> TargetCode
+    , block_contents        :: [BlockItem] }
 
 instance Show Block where
     show (Block sect (t1, t2) form cont) = form cont
 
-add_content :: Block -> Either Token Block -> Block
+add_content :: Block -> BlockItem -> Block
 add_content (Block sect tkbs form cont) x = Block sect tkbs form (cont++[x])
 
 compile_language :: LangCode -> IO Language
 compile_language langcode = -- TODO: implementation
-    return example_language 
+    return lang_md_to_html 
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -131,25 +133,43 @@ compile_language langcode = -- TODO: implementation
 %///////////////////////////////////////////////
 \begin{code}
 
-make_block sect tkbs form = Block sect tkbs form []
-
-make_static_block :: String -> String -> Block
-make_static_block sect cont = make_block sect ("","") (\_ -> cont)
-
-join_content :: String -> String -> [Either Token Block] -> TargetCode
+join_content :: String -> String -> [BlockItem] -> TargetCode
 join_content header footer xs =
     let f :: Either Token Block -> TargetCode -> TargetCode
         f x tgtcode = case x of
             Left  t -> tgtcode ++ t
-            Right b -> tgtcode ++ (block_format_content b $ block_content b)
+            Right b -> tgtcode ++ (block_format_contents b $ block_contents b)
     in (foldr f header xs) ++ footer
 
-example_language = Language
-    ( make_block "wrapper" ("","") (join_content "" "") )
-    [ make_static_block "header" "" , make_static_block "footer" "" ]
-    [ make_block "body" ("(",")") (join_content "<p>" "</p>") ]
+make_block sect tkbs form = Block sect tkbs form []
+
+make_static_block :: String -> String -> String -> Block
+make_static_block sect cont_begin cont_end
+    = make_block sect ("","") (join_content cont_begin cont_end)
+
+-- lang_example = Language
+--     ( make_block "wrapper" ("","") (join_content "" "") )
+--     [ make_static_block "header" "" , make_static_block "footer" "" ]
+--     (   [ make_block "body" ("(",")") (join_content "<A>" "</A>")
+--         , make_block "body" ("[","]") (join_content "<B>" "</B>") ])
+--     [ "header", "body", "footer" ]
+--     (\fp -> fp ++ ".exp_tgt")
+
+lang_md_to_html = Language
+    ( make_static_block "wrapper" "<!DOCTYPE html><html>" "</html>" )
+    (   -- head
+        [ make_static_block "head" "<head>" "</head>" ] )
+    (   -- headers
+        [ make_block "body" ("#####","\n") (join_content "<h5>" "</h5>\n")
+        , make_block "body" ("####","\n")  (join_content "<h4>" "</h4>\n")
+        , make_block "body" ("###","\n")   (join_content "<h3>" "</h3>\n")
+        , make_block "body" ("##","\n")    (join_content "<h2>" "</h2>\n")
+        , make_block "body" ("#","\n")     (join_content "<h1>" "</h1>\n")
+        -- inline styles
+
+        ] )
     [ "header", "body", "footer" ]
-    (\fp -> fp ++ ".exp_tgt")
+    (\fp -> fp ++ ".html")
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -163,11 +183,18 @@ example_language = Language
 \begin{code}
 
 compile_source :: Language -> SourceCode -> IO TargetCode
-compile_source lang srccode = return
-    $ blocktree_to_targetcode lang
-    $ tokens_to_blocktree lang
-    $ sourcecode_to_tokens lang
-    $ srccode
+compile_source lang srccode =
+    let tokens     = sourcecode_to_tokens lang srccode
+        blocktree  = tokens_to_blocktree lang tokens
+        targetcode = blocktree_to_targetcode lang blocktree
+    in do
+        putStrLn "-------------------------------------------------------"
+        putStrLn $ "tokens:\n" ++ (show tokens)
+        putStrLn "-------------------------------------------------------"
+        putStrLn $ "blocktree:\n" ++ (show blocktree)
+        putStrLn "-------------------------------------------------------"
+        putStrLn $ "targetcode:\n" ++ (targetcode)
+        return targetcode
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -201,7 +228,7 @@ sourcecode_to_tokens lang srccode =
                 Just s_rest -> if work_token == ""
                     then t : helper s_rest all_lang_tkns ""
                     else work_token : t : helper s_rest all_lang_tkns ""
-        all_lang_tkns = language_special_tokens lang
+        all_lang_tkns = lang_special_tokens lang
     in helper srccode all_lang_tkns ""
 
 -- if target is a substring of string and starts at the beginning of string,
@@ -216,8 +243,8 @@ target `extracted_from` string =
             then xs `extracted_from` ss
             else Nothing
 
-language_special_tokens :: Language -> [Token]
-language_special_tokens lang =
+lang_special_tokens :: Language -> [Token]
+lang_special_tokens lang =
     let helper :: [Block] -> [Token] -> [Token]
         helper []      ts = ts
         helper (b:bs)  ts =
@@ -226,7 +253,7 @@ language_special_tokens lang =
                     then [] else [t1]
                 add2 = if t2 `elem` ts || t2 == t1
                     then [] else [t2]
-            in helper bs (add1 ++ add2 ++ ts)
+            in helper bs (ts ++ add1 ++ add2)
     in helper (lang_blocks lang) []
 
 \end{code}
@@ -279,9 +306,52 @@ tokens_to_blocktree lang ts =
 %///////////////////////////////////////////////
 \begin{code}
 
+type TargetStructure = [(String, [BlockItem])]
+
 -- arranges the Block tree into the finalized TargetCode
-blocktree_to_targetcode :: Language -> Block -> SourceCode
-blocktree_to_targetcode _ _ = unimplemented
+blocktree_to_targetcode :: Language -> Block -> TargetCode
+blocktree_to_targetcode lang wrapper_block =
+    let -- appends a block item to the appropriate section of the structure
+        add_to_struct :: BlockItem -> TargetStructure -> TargetStructure
+        add_to_struct x [] = []
+        add_to_struct x ((sect, xs) : ss) = case x of
+            Left t -> if sect == "body"
+                then (sect, xs ++ [Left t]) : ss
+                else (sect, xs) : add_to_struct x ss
+            Right b -> if sect == (block_section b)
+                then (sect, xs ++ [Right b]) : ss
+                else (sect, xs) : add_to_struct x ss
+
+        -- creates a structure with all of the language sections, as well
+        -- as the static blocks
+        init_struct :: TargetStructure
+        init_struct =
+            let helper :: [BlockItem] -> TargetStructure -> TargetStructure
+                helper bs struct = case bs of
+                    [] -> struct
+                    (b:bs) -> add_to_struct b struct
+                empty_struct :: TargetStructure
+                empty_struct = map (\sect -> (sect, [])) (lang_sections lang)
+            in helper (map Right $ lang_static_blocks lang) empty_struct
+        
+        -- adds top level to TargetStructure (contents of wrapper_block)
+        toplevel_struct :: TargetStructure
+        toplevel_struct = foldr add_to_struct init_struct
+            $ block_contents wrapper_block
+
+        -- format TargetStructure as TargetCode
+        format_structure :: TargetStructure -> TargetCode
+        format_structure struct =
+            let format_blockitems :: [BlockItem] -> TargetCode
+                format_blockitems xs = foldl (++) ""
+                    $ map (\x -> case x of
+                        Left  t -> t
+                        Right b -> block_format_contents b $ block_contents b)
+                    xs
+            in case struct of
+                [] -> ""
+                ((sect, xs):ss) -> (format_blockitems xs) ++ format_structure ss
+    in format_structure toplevel_struct
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
