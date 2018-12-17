@@ -65,7 +65,7 @@ compile fp_lang fp_srcs = do
             putStrLn $ "compiling source: " ++ fp_src
             srccode <- readFile fp_src
             tgtcode <- compile_source lang fp_src
-            writeFile (convert_filepath lang fp_src) tgtcode)
+            writeFile (lang_convert_filepath lang fp_src) tgtcode)
         fp_srcs
 
 \end{code}
@@ -96,9 +96,22 @@ type SourceCode = String
 type LangCode   = String
 
 data Language = Language
-    { reserved_tokens :: [Token]
-    , convert_filepath :: FilePath -> FilePath
-    }
+    { lang_wrapper_block    :: Block
+    , lang_static_blocks    :: [Block]
+    , lang_blocks           :: [Block]
+    , lang_sections         :: [String]
+    , lang_convert_filepath :: FilePath -> FilePath }
+
+type TargetCode = String
+
+data Block = Block
+    { block_section        :: String
+    , block_token_bounds   :: (Token, Token)
+    , block_format_content :: [Either Token Block] -> TargetCode
+    , block_content        :: [Either Token Block] }
+
+add_content :: Block -> Either Token Block -> Block
+add_content (Block sect tkbs form cont) x = Block sect tkbs form (cont++[x])
 
 compile_language :: LangCode -> IO Language
 compile_language langcode = -- TODO: implementation
@@ -115,9 +128,24 @@ compile_language langcode = -- TODO: implementation
 %///////////////////////////////////////////////
 \begin{code}
 
+make_block sect tkbs form = Block sect tkbs form []
+
+make_static_block :: String -> String -> Block
+make_static_block sect cont = make_block sect ("","") (\_ -> cont)
+
+join_content :: String -> String -> [Either Token Block] -> TargetCode
+join_content header footer xs =
+    let f :: Either Token Block -> TargetCode -> TargetCode
+        f x tgtcode = case x of
+            Left  t -> tgtcode ++ t
+            Right b -> tgtcode ++ (block_format_content b $ block_content b)
+    in (foldr f header xs) ++ footer
 
 example_language = Language
-    [ "(", ")" ]
+    ( make_block "wrapper" ("","") (join_content "" "") )
+    [ make_static_block "header" "" , make_static_block "footer" "" ]
+    [ make_block "body" ("(",")") (join_content "<p>" "</p>") ]
+    [ "header", "body", "footer" ]
     (\fp -> fp ++ ".exp_tgt")
 
 \end{code}
@@ -131,51 +159,47 @@ example_language = Language
 %///////////////////////////////////////////////
 \begin{code}
 
-type TargetCode = String
-
-data Block = Block
-
 compile_source :: Language -> SourceCode -> IO TargetCode
 compile_source lang srccode = return
-    $ arrange_blocks lang
-    $ interpret_blocks lang
+    $ blocktree_to_targetcode lang
+    $ tokens_to_blocktree lang
     $ separate lang
     $ srccode
+
+\end{code}
+%\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+% TODO: description
+
+%///////////////////////////////////////////////
+\begin{code}
 
 -- separates SourceCode into Tokens, splitting by
 -- the tokens reserved by the Language
 separate :: Language -> SourceCode -> [Token]
 separate lang srccode =
     let helper :: SourceCode -> [Token] -> Token -> [Token]
-        helper srccode lang_tkns work_tkn = case (srccode, lang_tkns) of
+        helper srccode lang_tkns work_token = case (srccode, lang_tkns) of
             -- finished all of the srccode.
-            -- append work_tkn if its non-empty.
-            ("", _) -> if work_tkn == ""
+            -- append work_token if its non-empty.
+            ("", _) -> if work_token == ""
                 then []
-                else [work_tkn]
+                else [work_token]
             -- have gone through all tokens, so add the front char
-            -- to the work_tkn, and recurse through all of
+            -- to the work_token, and recurse through all of
             -- the lang tokens.
-            (c:s, []) -> helper s all_lang_tkns (work_tkn++[c])
+            (c:s, []) -> helper s all_lang_tkns (work_token++[c])
             -- check to see if t extracts from s. if so, then
             -- prepend t and then restart recurse on rest of srccode.
-            -- prepend work_tkn before the newfound token, if work_tkn
+            -- prepend work_token before the newfound token, if work_token
             -- is non-empty
             (s, t:ts) -> case t `extracted_from` s of
-                Nothing -> helper s ts work_tkn
-                Just s_rest -> if work_tkn == ""
+                Nothing -> helper s ts work_token
+                Just s_rest -> if work_token == ""
                     then t : helper s_rest all_lang_tkns ""
-                    else work_tkn : t : helper s_rest all_lang_tkns ""
-        all_lang_tkns = reserved_tokens lang
+                    else work_token : t : helper s_rest all_lang_tkns ""
+        all_lang_tkns = language_special_tokens lang
     in helper srccode all_lang_tkns ""
-
--- breaks Token list into a Block tree
-interpret_blocks :: Language -> [Token] -> Block
-interpret_blocks _ _ = unimplemented
-
--- arranges the Block tree into the finalized TargetCode
-arrange_blocks :: Language -> Block -> SourceCode
-arrange_blocks _ _ = unimplemented
 
 -- if target is a substring of string and starts at the beginning of string,
 -- then is Just the rest of string after target ends.
@@ -188,6 +212,73 @@ target `extracted_from` string =
         (x:xs, s:ss) -> if s == x
             then xs `extracted_from` ss
             else Nothing
+
+language_special_tokens :: Language -> [Token]
+language_special_tokens lang =
+    let helper :: [Block] -> [Token] -> [Token]
+        helper []      ts = ts
+        helper (b:bs)  ts =
+            let (t1, t2) = block_token_bounds b
+                add1 = if t1 `elem` ts
+                    then [] else [t1]
+                add2 = if t2 `elem` ts || t2 == t1
+                    then [] else [t2]
+            in helper bs (add1 ++ add2 ++ ts)
+    in helper (lang_blocks lang) []
+
+\end{code}
+%\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+% TODO: description
+
+%///////////////////////////////////////////////
+\begin{code}
+
+-- breaks Token list into a Block tree
+tokens_to_blocktree :: Language -> [Token] -> Block
+tokens_to_blocktree lang ts =
+    let helper :: [Token] -> Block -> (Block, [Token])
+        helper ts work_block = case ts of
+            [] -> (work_block, [])
+            -- does token begin new block?
+            (t:ts) -> case block_that_begins_with t of
+                -- token begins new block
+                Just block ->
+                    let new_work_block = add_content 
+                            work_block (Right new_block)
+                        (new_block, ts_rest) = helper ts block
+                    in helper ts_rest new_work_block
+                -- does token end current block?
+                Nothing ->
+                    if (t == (snd $ block_token_bounds work_block)
+                    && ("wrapper" /= block_section work_block))
+                        -- token ends current work_block
+                        then (work_block, ts)
+                        -- token is normal; append to current block
+                        else helper ts $ add_content work_block (Left t)
+        block_that_begins_with :: Token -> Maybe Block
+        block_that_begins_with t =
+            let helper :: [Block] -> Maybe Block
+                helper [] = Nothing
+                helper (b:bs) =
+                    let (t1, t2) = block_token_bounds b
+                    in if t == t1
+                        then Just b
+                        else helper bs
+            in helper $ lang_blocks lang
+    in fst $ helper ts (lang_wrapper_block lang)
+
+\end{code}
+%\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+% TODO: description
+
+%///////////////////////////////////////////////
+\begin{code}
+
+-- arranges the Block tree into the finalized TargetCode
+blocktree_to_targetcode :: Language -> Block -> SourceCode
+blocktree_to_targetcode _ _ = unimplemented
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
