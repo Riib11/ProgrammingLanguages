@@ -110,6 +110,9 @@ data Block = Block
     , block_format_content :: [Either Token Block] -> TargetCode
     , block_content        :: [Either Token Block] }
 
+instance Show Block where
+    show (Block sect (t1, t2) form cont) = form cont
+
 add_content :: Block -> Either Token Block -> Block
 add_content (Block sect tkbs form cont) x = Block sect tkbs form (cont++[x])
 
