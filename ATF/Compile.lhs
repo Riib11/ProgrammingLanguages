@@ -163,7 +163,7 @@ compile_source :: Language -> SourceCode -> IO TargetCode
 compile_source lang srccode = return
     $ blocktree_to_targetcode lang
     $ tokens_to_blocktree lang
-    $ separate lang
+    $ sourcecode_to_tokens lang
     $ srccode
 
 \end{code}
@@ -174,10 +174,10 @@ compile_source lang srccode = return
 %///////////////////////////////////////////////
 \begin{code}
 
--- separates SourceCode into Tokens, splitting by
--- the tokens reserved by the Language
-separate :: Language -> SourceCode -> [Token]
-separate lang srccode =
+-- separates SourceCode into Tokens,
+-- splitting with the tokens reserved by the Language.
+sourcecode_to_tokens :: Language -> SourceCode -> [Token]
+sourcecode_to_tokens lang srccode =
     let helper :: SourceCode -> [Token] -> Token -> [Token]
         helper srccode lang_tkns work_token = case (srccode, lang_tkns) of
             -- finished all of the srccode.
