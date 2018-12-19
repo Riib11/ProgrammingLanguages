@@ -23,7 +23,7 @@
 Block quote
 <<<
 
-escaped characters: \* \*\* \[not a link\]
+escaped characters: \* \* \* \[ not a link \]
 
 `code inline` 
 

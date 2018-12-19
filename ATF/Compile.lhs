@@ -107,16 +107,18 @@ type TargetCode = String
 type BlockItem = Either Token Block
 
 data Block = Block
-    { block_section        :: String
-    , block_token_bounds   :: (Token, Token)
+    { block_section         :: String
+    , block_token_bounds    :: (Token, Token)
+    , block_allow_nesting   :: Bool
     , block_format_contents :: [BlockItem] -> TargetCode
     , block_contents        :: [BlockItem] }
 
 instance Show Block where
-    show (Block sect (t1, t2) form cont) = form cont
+    show (Block sect (t1, t2) nest form cont) = form cont
 
 add_content :: Block -> BlockItem -> Block
-add_content (Block sect tkbs form cont) x = Block sect tkbs form (cont++[x])
+add_content (Block sect tkbs nest form cont) x =
+    Block sect tkbs nest form (cont++[x])
 
 compile_language :: LangCode -> IO Language
 compile_language langcode = -- TODO: implementation
@@ -141,11 +143,11 @@ join_content header footer xs =
             Right b -> tgtcode ++ (block_format_contents b $ block_contents b)
     in (foldr f header xs) ++ footer
 
-make_block sect tkbs form = Block sect tkbs form []
+make_block sect tkbs nest form = Block sect tkbs nest form []
 
-make_static_block :: String -> String -> String -> Block
-make_static_block sect cont_begin cont_end
-    = make_block sect ("","") (join_content cont_begin cont_end)
+make_static_block :: String -> String -> String -> Bool -> Block
+make_static_block sect cont_begin cont_end nest =
+    make_block sect ("","") nest (join_content cont_begin cont_end)
 
 -- lang_example = Language
 --     ( make_block "wrapper" ("","") (join_content "" "") )
@@ -156,29 +158,50 @@ make_static_block sect cont_begin cont_end
 --     (\fp -> fp ++ ".exp_tgt")
 
 lang_md_to_html = Language
-    ( make_static_block "wrapper" "<!DOCTYPE html><html>" "</html>" )
+    -- wrapper block
+    ( make_static_block "wrapper" "<!DOCTYPE html><html>" "</html>" True )
+    -- static blocks
     (   -- head
-        [ make_static_block "head" "<head>" "</head>" ] )
-    (   -- line styles
-        [ make_block "body" ("\n- ", "\n")
-            (join_content "<li class=\"line-listitem\">" "</li>\n")
-        , make_block "body" ("#####","\n")
+        [ make_static_block "head" "<head>" "</head>" True ] )
+    -- blocks
+    (   -- escapes
+        [ make_block "body" ("\\","\n") False
+            (join_content " " "\n")
+        , make_block "body" ("\\"," ") False
+            (join_content " " " ")
+        -- multiline styles
+        , make_block "body" ("$$","$$") False
+            (join_content "<div class=\"multiline-math\">" "</div>")
+        , make_block "body" ("```","```") False
+            (join_content "<div class=\"multiline-code\">" "</div>")
+        , make_block "body" (">>>","<<<") True
+            (join_content "<div class=\"multiline-quote\">" "</div>")
+        -- line styles
+        , make_block "body" ("#####","\n") True
             (join_content "<div class=\"line-header5\">" "</div>\n")
-        , make_block "body" ("####","\n")
+        , make_block "body" ("####","\n") True
             (join_content "<div class=\"line-header4\">" "</div>\n")
-        , make_block "body" ("###","\n")
+        , make_block "body" ("###","\n") True
             (join_content "<div class=\"line-header3\">" "</div>\n")
-        , make_block "body" ("##","\n")
+        , make_block "body" ("##","\n") True
             (join_content "<div class=\"line-header2\">" "</div>\n")
-        , make_block "body" ("#","\n")
+        , make_block "body" ("#","\n") True
             (join_content "<div class=\"line-header1\">" "</div>\n")
+        , make_block "body" (">","\n") True
+            (join_content "<div class=\"line-quote\">" "</div>\n")
         -- inline styles
-        , make_block "body" ("**","**")
+        , make_block "body" ("**","**") True
             (join_content "<span class=\"inline-bold\">" "</span>")
-        , make_block "body" ("*","*")
+        , make_block "body" ("*","*") True
             (join_content "<span class=\"inline-italic\">" "</span>")
+        , make_block "body" ("$","$") False
+            (join_content "<span class=\"inline-math\">" "</span>")
+        , make_block "body" ("`","`") False
+            (join_content "<span class=\"inline-code\">" "</span>")
         ] )
+    -- sections
     [ "header", "body", "footer" ]
+    -- file format
     (\fp -> fp ++ ".html")
 
 \end{code}
@@ -286,16 +309,19 @@ tokens_to_blocktree lang ts =
                    && ("wrapper" /= block_section work_block))
                     -- token ends current work_block
                     then (work_block, ts)
-                    -- does token begin new block?
-                    else case block_that_begins_with t of
-                        -- token begins new block
-                        Just block ->
-                            let new_work_block = add_content 
-                                    work_block (Right new_block)
-                                (new_block, ts_rest) = helper ts block
-                            in helper ts_rest new_work_block
-                        -- token is normal; append to current block
-                        Nothing -> helper ts $ add_content work_block (Left t)
+                    else if (block_allow_nesting work_block)
+                        -- can nest, so does token begin new block?
+                        then case block_that_begins_with t of
+                            -- token begins new block
+                            Just block ->
+                                let new_work_block = add_content 
+                                        work_block (Right new_block)
+                                    (new_block, ts_rest) = helper ts block
+                                in helper ts_rest new_work_block
+                            -- token is normal; append to current block
+                            Nothing -> helper ts $ add_content work_block (Left t)
+                        -- cannot nest, so append token to current block
+                        else helper ts $ add_content work_block (Left t)
         block_that_begins_with :: Token -> Maybe Block
         block_that_begins_with t =
             let helper :: [Block] -> Maybe Block
