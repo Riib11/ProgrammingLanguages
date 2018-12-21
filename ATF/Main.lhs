@@ -37,14 +37,14 @@ main = do
         "help" : []         -> help "all"
         "help" : topic : [] -> help topic
         "compile" : []      -> help "compile"
-        "compile" : fp_lang : fp_srcs -> do
+        "compile" : fp_trans : fp_srcs -> do
             putStrLn $ "-------------------------------------------------------"
             putStrLn $ "compiling with:"
-            putStrLn $ "- language: " ++ fp_lang
-            putStrLn $ "- sources:  " ++ (list_to_string fp_srcs)
+            putStrLn $ "- translator: " ++ fp_trans
+            putStrLn $ "- sources:    " ++ (list_to_string fp_srcs)
             putStrLn $ "-------------------------------------------------------"
             putStrLn $ "compilation status:"
-            compile fp_lang fp_srcs
+            compile fp_trans fp_srcs
         -- other commands
         command : _ -> error $ "unrecognized command: " ++ command
         []          -> error "use `atf help <topic>` for help"
