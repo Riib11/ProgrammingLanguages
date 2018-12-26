@@ -106,7 +106,7 @@ instance Show Block where
 
 instance Show BlockChild where
     show child = case child of
-        ChildCode x -> x
+        ChildCode x -> "\"" ++ x ++ "\""
         ChildBlock x -> show x
 
 compile_translator :: TransCode -> IO Translator
@@ -129,6 +129,9 @@ compile_translator transcode = -- TODO: implementation
 make_block :: String -> ([TargetCode] -> TargetCode) -> Bool -> Block
 make_block title block_format does_nest = Block title [] block_format does_nest
 
+join_comment :: ([TargetCode] -> TargetCode)
+join_comment _ = ""
+
 join_span :: String -> ([TargetCode] -> TargetCode)
 join_span classname = join_container
     ("<span class=\"" ++ classname ++ "\">") ("</span>")
@@ -137,14 +140,104 @@ join_div :: String -> ([TargetCode] -> TargetCode)
 join_div classname = join_container
     ("<div class=\"" ++ classname ++ "\">") ("</div>\n")
 
+join_tag_class :: String -> String -> ([TargetCode] -> TargetCode)
+join_tag_class tag classname = join_container
+    ("<" ++ tag ++ " class=\"" ++ classname ++ "\">") ("</" ++ tag ++ ">")
+
+join_tag_attr :: String -> String -> ([TargetCode] -> TargetCode)
+join_tag_attr tag_begin tag_end = join_container
+    ("<" ++ tag_begin ++ ">") ("</" ++ tag_end ++ ">")
+
+join_tag :: String -> ([TargetCode] -> TargetCode)
+join_tag tag = join_container ("<" ++ tag ++ ">") ("</" ++ tag ++ ">")
+
+join_js :: ([TargetCode] -> TargetCode)
+join_js [x] = "<script type=\"text/javascript\">" ++ x ++ "</script>" 
+
+join_js_src :: ([TargetCode] -> TargetCode)
+join_js_src [x] = "<script type=\"text/javascript\" src=\""
+                  ++ x ++ "\"></script>"
+
+join_css :: ([TargetCode] -> TargetCode)
+join_css [x] = "<style type=\"text/css\">" ++ x ++ "</style>" 
+
+join_css_src :: ([TargetCode] -> TargetCode)
+join_css_src [x] = "<link rel=\"stylesheet\" type=\"text/css\" href=\""
+                   ++ x ++ "\">"
+
+join_html_body :: ([TargetCode] -> TargetCode)
+join_html_body ls =
+    let helper :: [TargetCode] -> TargetCode
+        helper [] = ""
+        helper (x:xs) = x ++ helper xs
+    in "<body>\n" ++ (helper ls) ++ "\n</body>"
+
+
+join_inline_math :: ([TargetCode] -> TargetCode)
+join_inline_math [x] = "$$$$$" ++ x ++ "$$$$$"
+
+join_block_math :: ([TargetCode] -> TargetCode)
+join_block_math [x] = "$$$$$$$$$$" ++ x ++ "$$$$$$$$$$"
+
+join_row :: ([TargetCode] -> TargetCode)
+join_row tgtcode =
+    let helper :: [TargetCode] -> TargetCode
+        helper ls = case ls of
+            [] -> ""
+            (x:xs) -> "<td>" ++ x ++ "</td>" ++ helper xs
+    in "<tr class=\"row\">" ++ helper tgtcode ++ "</tr>"
+
+join_hrow :: ([TargetCode] -> TargetCode)
+join_hrow tgtcode =
+    let helper :: [TargetCode] -> TargetCode
+        helper ls = case ls of
+            [] -> ""
+            (x:xs) -> "<th>" ++ x ++ "</th>" ++ helper xs
+    in "<tr class=\"hrow\">" ++ helper tgtcode ++ "</tr>"
+
+join_image :: ([TargetCode] -> TargetCode)
+join_image [src,alt] = "<img src=\"" ++ src ++ "\" alt=\"" ++ alt ++ "\">"
+join_image [src] = "<img src=\"" ++ src ++ "\">"
+
 trans_example = Translator
     ( -- scopes
-        [ make_block "*" (join_span "inline-bold")   True
-        , make_block "~" (join_span "inline-strike") False ] )
+        [ make_block "--"       join_comment                         False
+        
+        , make_block "head"     (join_tag "head")                    True
+
+        , make_block "js-src"   join_js_src                          False
+        , make_block "js"       join_js                              False
+        , make_block "css-src"  join_css_src                         False
+        , make_block "css"      join_css                             False
+        , make_block "title"    (join_tag "title")                   False
+
+        , make_block "body"     join_html_body                       True
+        
+        , make_block "#####"    (join_div  "header-5")               True
+        , make_block "####"     (join_div  "header-4")               True
+        , make_block "###"      (join_div  "header-3")               True
+        , make_block "##"       (join_div  "header-2")               True
+        , make_block "#"        (join_div  "header-1")               True
+        , make_block "p"        (join_div "paragraph")               True
+        , make_block "$$"       join_block_math                      False
+        , make_block "$"        join_inline_math                     False
+        , make_block "```"      (join_tag_class "pre" "block-code")  False
+        , make_block "`"        (join_span "inline-code")            False
+        , make_block "img"      join_image                           False
+        , make_block ">"        (join_div "block-quote")             True
+        , make_block "-"        (join_div "line-bullet")             True
+        , make_block "*"        (join_span "inline-bold")            True
+        , make_block "_"        (join_span "inline-italic")          True
+        , make_block "~"        (join_span "inline-strike")          True
+
+        , make_block "table"    (join_tag_class "table" "table")     True
+        , make_block "hr"       join_hrow                            True
+        , make_block "tr"       join_row                             True
+        ] )
     ( -- root scope
-        make_block "root" join True )
+        make_block "root" (join_tag_attr "!DOCTYPE html><html" "html") True )
     ( -- convert filepath
-        \fp -> "" )
+        \fp -> fp ++ ".html" )
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -259,16 +352,14 @@ sourcecode_to_blocktree trans sourcecode =
                     return (block, xs)
                 -- escape character
                 ('\\':x:xs) ->
-                    let new_block = add_child block (ChildCode [x])
-                    in do
-                        -- debug $ "add escaped: " ++ [x] 
-                        helper new_block xs
+                    let new_block = if x `elem` "|>"
+                        then add_child block (ChildCode [x])
+                        else add_child block (ChildCode $ '\\':x:[])
+                    in helper new_block xs
                 -- add normal character
                 (x:xs) ->
                     let new_block = add_child block (ChildCode [x])
-                    in do
-                        -- debug $ "add char: " ++ [x] 
-                        helper new_block xs
+                    in helper new_block xs
                 -- end of sourcecode
                 "" -> do
                     debug "end of sourcecode"
@@ -291,12 +382,15 @@ blocktree_to_targetcode trans block =
     let helper :: [BlockChild] -> IO [TargetCode]
         helper children = case children of
             [] -> return []
-            (child:cs) -> do
-                transed_child <- case child of
-                    ChildCode  x -> return x
-                    ChildBlock x -> blocktree_to_targetcode trans x
-                transed_cs <- helper cs
-                return $ transed_child : transed_cs
+            (child:cs) -> case child of
+                ChildCode x -> do
+                    transed_cs <- helper cs
+                    return $ transed_cs
+                        ++ (if is_empty_string x then [] else [x])
+                ChildBlock x -> do
+                    transed_child <- blocktree_to_targetcode trans x
+                    transed_cs <- helper cs
+                    return $ transed_cs ++ [transed_child]
     in do
         transed_children <- helper (block_children block)
         return $ block_format block $ transed_children

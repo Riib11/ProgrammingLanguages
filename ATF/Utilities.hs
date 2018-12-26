@@ -3,6 +3,7 @@ module Utilities
 , join
 , join_container
 , join_sep
+, is_empty_string
 ) where
 
 beheaded_by :: String -> String -> Maybe String
@@ -26,3 +27,10 @@ join_container begin end xs = begin ++ (join xs) ++ end
 
 join_sep_container :: String -> String -> String -> ([String] -> String)
 join_sep_container begin end div xs = begin ++ (join_sep div xs) ++ end
+
+is_empty_string :: String -> Bool
+is_empty_string s = case s of
+    "" -> True
+    (x:xs) -> if x `elem` [' ', '\n']
+        then is_empty_string xs
+        else False
