@@ -129,6 +129,66 @@ compile_sourcecode = error "undefined"
 
 type Token = String
 
+type Block = [BlockChild]
+
+type BlockChild
+    = ChildCode  SourceCode
+    | ChildBlock Block
+
+block_title :: Block -> String
+block_title b = case b of
+    (ChildCode  t:_) -> t
+    (ChildBlock _:_) -> error "block title must be string"
+    _                -> error "block has no title"
+
+add_child :: Block -> BlockChild -> Block
+add_child cs child = case child of
+    -- new child is code
+    ChildCode x -> case cs of
+        -- if most recent child is code, append x to that
+        (ChildCode y : cs_) -> ChildCode (y ++ x) : cs_
+        -- otherwise, append to children
+        _ -> ChildCode x : cs
+    -- new child is a block
+    ChildBlock x -> x : cs
+
+add_parition :: Block -> Block
+add_parition cs = case cs of
+    ("":_) -> cs
+    _ -> "":cs
+
+sourcecode_to_blocktree :: SourceCode -> IO Block
+sourcecode_to_blocktree sourcecode =
+    let root_block = []
+        empty_block = []
+        helper :: Block -> SourceCode -> IO (Block, SourceCode)
+        helper block srccode = case srccode of
+            -- end of sourcecode
+            "" -> return (block, "")
+            -- begin block
+            ('<':'|':xs) -> do
+                (new_block, xs_rest) <- helper empty_block xs
+                debug $ "begin block: " ++ (block_title new_block)
+                helper block xs_rest
+            -- end current block
+            ('|':'>':xs) -> do
+                debug $ "end block: " ++ (block_title block)
+                return (block, xs)
+            -- add partition to current block
+            ('|':xs) ->
+                let new_block = add_parition block
+                in do
+                    debug $ "part block: " ++ (block_title new_block)
+                    helper new_block xs
+            -- add normal character
+            (x:xs) ->
+                let new_block = add_child block (ChildCode [x])
+                in do
+                    debug $ "add char: " ++ [x] 
+                    helper new_block xs
+
+    in helper sourcecode root_block
+
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
