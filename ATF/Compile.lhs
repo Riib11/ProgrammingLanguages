@@ -43,6 +43,7 @@ module Compile
 ) where
 
 import Debug
+import Utilities
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -54,6 +55,10 @@ import Debug
 
 %///////////////////////////////////////////////
 \begin{code}
+
+type SourceCode = String
+type TransCode  = String
+type TargetCode = String
 
 compile :: FilePath -> [FilePath] -> IO ()
 compile fp_trans fp_srcs = do
@@ -79,16 +84,33 @@ compile fp_trans fp_srcs = do
 %///////////////////////////////////////////////
 \begin{code}
 
-type SourceCode = String
-type TransCode  = String
+data Translator = Translator
+    { trans_blocks           :: [Block]
+    , trans_root_block       :: Block
+    , trans_convert_filepath :: FilePath -> FilePath }
 
-data Translator = Translator -- TODO: implementation
-    -- , trans_convert_filepath :: FilePath -> FilePath }
+data Block = Block
+    { block_title     :: String
+    , block_children  :: [BlockChild]
+    , block_does_nest :: Bool }
+
+data BlockChild
+    = ChildCode  SourceCode
+    | ChildBlock Block
+
+instance Show Block where
+    show block
+        = "{ " ++ (block_title block) ++ " : "
+        ++ (show $ reverse $ block_children block) ++ " }"
+
+instance Show BlockChild where
+    show child = case child of
+        ChildCode x -> x
+        ChildBlock x -> show x
 
 compile_translator :: TransCode -> IO Translator
 compile_translator transcode = -- TODO: implementation
     return trans_example
-    -- return trans_md_to_html
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -101,96 +123,164 @@ compile_translator transcode = -- TODO: implementation
 %///////////////////////////////////////////////
 \begin{code}
 
-trans_example = error "undefined"
+make_block :: String -> Bool -> Block
+make_block title does_nest = Block title [] does_nest
 
-trans_md_to_html = error "undefined"
+trans_example = Translator
+    ( -- scopes
+        [ make_block "*" True
+        , make_block "~" False ] )
+    ( -- root scope
+        make_block "root" True )
+    ( -- convert filepath
+        \fp -> "" )
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 %-------------------------------------------------------------------------------
-\section{Compiling Source}
-
+\section{Compiling SourceCode}
 % TODO: description
 
 %///////////////////////////////////////////////
 \begin{code}
 
 compile_sourcecode :: Translator -> SourceCode -> IO TargetCode
-compile_sourcecode = error "undefined"
+compile_sourcecode translator sourcecode = do
+    blocktree  <- sourcecode_to_blocktree translator sourcecode 
+    debug $ "blocktree: " ++ (show blocktree)
+    targetcode <- blocktree_to_targetcode translator blocktree
+    debug $ "targetcode: " ++ targetcode
+    return targetcode 
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
+\subsection{SourceCode to Block-tree}
 % TODO: description
 
 %///////////////////////////////////////////////
 \begin{code}
 
-type Token = String
+set_children (Block scope _ does_nest) children =
+    Block scope children does_nest
 
-type Block = [BlockChild]
-
-type BlockChild
-    = ChildCode  SourceCode
-    | ChildBlock Block
-
-block_title :: Block -> String
-block_title b = case b of
-    (ChildCode  t:_) -> t
-    (ChildBlock _:_) -> error "block title must be string"
-    _                -> error "block has no title"
+prepend_blockchild (Block scope children does_nest) child =
+    Block scope (child : children) does_nest
 
 add_child :: Block -> BlockChild -> Block
-add_child cs child = case child of
+add_child block child = case child of
     -- new child is code
-    ChildCode x -> case cs of
+    (ChildCode x) -> case (block_children block) of
         -- if most recent child is code, append x to that
-        (ChildCode y : cs_) -> ChildCode (y ++ x) : cs_
-        -- otherwise, append to children
-        _ -> ChildCode x : cs
+        (ChildCode y : cs_) -> set_children block $ ChildCode (y ++ x) : cs_
+        -- otherwise, prepend to children
+        _ -> prepend_blockchild block $ ChildCode x
     -- new child is a block
-    ChildBlock x -> x : cs
+    (ChildBlock x) -> prepend_blockchild block $ ChildBlock x
 
 add_parition :: Block -> Block
-add_parition cs = case cs of
-    ("":_) -> cs
-    _ -> "":cs
+add_parition block = case (block_children block) of
+    (ChildCode "":_) -> block
+    _ -> prepend_blockchild block $ ChildCode ""
 
-sourcecode_to_blocktree :: SourceCode -> IO Block
-sourcecode_to_blocktree sourcecode =
-    let root_block = []
-        empty_block = []
+sourcecode_to_blocktree :: Translator -> SourceCode -> IO Block
+sourcecode_to_blocktree trans sourcecode =
+    let root_block = trans_root_block trans
+        all_blocks = trans_blocks trans
+        
+        extract_empty_block :: SourceCode -> (Block, SourceCode)
+        extract_empty_block srccode =
+            let helper :: [Block] -> (Block, SourceCode)
+                helper blocks = case blocks of
+                    -- none of blocks matched
+                    [] -> error $ "no block title found at: " ++ srccode
+                    -- check if srccode starts with the scope's title
+                    (b:bs) -> case srccode `beheaded_by` (block_title b) of
+                        -- this scope matches
+                        Just srccode_rest -> (b, srccode_rest)
+                        -- this scope does not match
+                        Nothing -> helper bs
+            in helper all_blocks
+
         helper :: Block -> SourceCode -> IO (Block, SourceCode)
-        helper block srccode = case srccode of
-            -- end of sourcecode
-            "" -> return (block, "")
-            -- begin block
-            ('<':'|':xs) -> do
-                (new_block, xs_rest) <- helper empty_block xs
-                debug $ "begin block: " ++ (block_title new_block)
-                helper block xs_rest
-            -- end current block
-            ('|':'>':xs) -> do
-                debug $ "end block: " ++ (block_title block)
-                return (block, xs)
-            -- add partition to current block
-            ('|':xs) ->
-                let new_block = add_parition block
-                in do
-                    debug $ "part block: " ++ (block_title new_block)
-                    helper new_block xs
-            -- add normal character
-            (x:xs) ->
-                let new_block = add_child block (ChildCode [x])
-                in do
-                    debug $ "add char: " ++ [x] 
-                    helper new_block xs
-
-    in helper sourcecode root_block
+        helper block srccode = if (block_does_nest block)
+            -- parse nesting
+            then case srccode of
+                -- begin block
+                ('<':'|':xs) ->
+                    let (empty_block, xs_) = extract_empty_block xs
+                    in do
+                        (new_block, xs_rest) <- helper empty_block xs_
+                        debug $ "begin block: " ++ (block_title new_block)
+                        helper (add_child block $ ChildBlock new_block) xs_rest
+                -- end current block
+                ('|':'>':xs) -> do
+                    debug $ "end block: " ++ (block_title block)
+                    return (block, xs)
+                -- add partition to current block
+                ('|':xs) ->
+                    let new_block = add_parition block
+                    in do
+                        debug $ "part block: " ++ (block_title new_block)
+                        helper new_block xs
+                -- escape character
+                ('\\':x:xs) ->
+                    let new_block = add_child block (ChildCode [x])
+                    in do
+                        -- debug $ "add escaped: " ++ [x] 
+                        helper new_block xs
+                -- add normal character
+                (x:xs) ->
+                    let new_block = add_child block (ChildCode [x])
+                    in do
+                        -- debug $ "add char: " ++ [x] 
+                        helper new_block xs
+                -- end of sourcecode
+                "" -> do
+                    debug "end of sourcecode"
+                    return (block, "")
+            -- parse raw; no nesting
+            else case srccode of
+                -- end current block
+                ('|':'>':xs) -> do
+                    debug $ "end block: " ++ (block_title block)
+                    return (block, xs)
+                -- escape character
+                ('\\':x:xs) ->
+                    let new_block = add_child block (ChildCode [x])
+                    in do
+                        -- debug $ "add escaped: " ++ [x] 
+                        helper new_block xs
+                -- add normal character
+                (x:xs) ->
+                    let new_block = add_child block (ChildCode [x])
+                    in do
+                        -- debug $ "add char: " ++ [x] 
+                        helper new_block xs
+                -- end of sourcecode
+                "" -> do
+                    debug "end of sourcecode"
+                    return (block, "")
+    in do
+        (block, _) <- helper root_block sourcecode
+        return block
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+\subsection{Block-tree to TargetCode}
+% TODO: description
+
+%///////////////////////////////////////////////
+\begin{code}
+
+blocktree_to_targetcode :: Translator -> Block -> IO TargetCode
+blocktree_to_targetcode = error "unimplemented"
+
+\end{code}
+%\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
 
 %-------------------------------------------------------------------------------
 \end{document}
