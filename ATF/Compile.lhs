@@ -92,6 +92,7 @@ data Translator = Translator
 data Block = Block
     { block_title     :: String
     , block_children  :: [BlockChild]
+    , block_format    :: [TargetCode] -> TargetCode
     , block_does_nest :: Bool }
 
 data BlockChild
@@ -123,15 +124,25 @@ compile_translator transcode = -- TODO: implementation
 %///////////////////////////////////////////////
 \begin{code}
 
-make_block :: String -> Bool -> Block
-make_block title does_nest = Block title [] does_nest
+-- title children format nest
+
+make_block :: String -> ([TargetCode] -> TargetCode) -> Bool -> Block
+make_block title block_format does_nest = Block title [] block_format does_nest
+
+join_span :: String -> ([TargetCode] -> TargetCode)
+join_span classname = join_container
+    ("<span class=\"" ++ classname ++ "\">") ("</span>")
+
+join_div :: String -> ([TargetCode] -> TargetCode)
+join_div classname = join_container
+    ("<div class=\"" ++ classname ++ "\">") ("</div>\n")
 
 trans_example = Translator
     ( -- scopes
-        [ make_block "*" True
-        , make_block "~" False ] )
+        [ make_block "*" (join_span "inline-bold")   True
+        , make_block "~" (join_span "inline-strike") False ] )
     ( -- root scope
-        make_block "root" True )
+        make_block "root" join True )
     ( -- convert filepath
         \fp -> "" )
 
@@ -162,11 +173,11 @@ compile_sourcecode translator sourcecode = do
 %///////////////////////////////////////////////
 \begin{code}
 
-set_children (Block scope _ does_nest) children =
-    Block scope children does_nest
+set_children (Block title _ format does_nest) children =
+    Block title children format does_nest
 
-prepend_blockchild (Block scope children does_nest) child =
-    Block scope (child : children) does_nest
+prepend_blockchild (Block title children format does_nest) child =
+    Block title (child : children) format does_nest
 
 add_child :: Block -> BlockChild -> Block
 add_child block child = case child of
@@ -276,7 +287,19 @@ sourcecode_to_blocktree trans sourcecode =
 \begin{code}
 
 blocktree_to_targetcode :: Translator -> Block -> IO TargetCode
-blocktree_to_targetcode = error "unimplemented"
+blocktree_to_targetcode trans block =
+    let helper :: [BlockChild] -> IO [TargetCode]
+        helper children = case children of
+            [] -> return []
+            (child:cs) -> do
+                transed_child <- case child of
+                    ChildCode  x -> return x
+                    ChildBlock x -> blocktree_to_targetcode trans x
+                transed_cs <- helper cs
+                return $ transed_child : transed_cs
+    in do
+        transed_children <- helper (block_children block)
+        return $ block_format block $ transed_children
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\

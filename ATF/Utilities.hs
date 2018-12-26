@@ -1,10 +1,9 @@
 module Utilities
-( join
-, beheaded_by
+( beheaded_by
+, join
+, join_container
+, join_sep
 ) where
-
-join :: [String] -> String
-join = foldr (++) ""
 
 beheaded_by :: String -> String -> Maybe String
 string `beheaded_by` target = case (string, target) of
@@ -13,3 +12,17 @@ string `beheaded_by` target = case (string, target) of
     (s:ss, x:xs) -> if s == x
         then ss `beheaded_by` xs
         else Nothing
+
+join :: [String] -> String
+join = foldr (++) ""
+
+join_sep :: String -> [String] -> String
+join_sep div []        = []
+join_sep div (x:[])    = x
+join_sep div (x:y:xs) = x ++ div ++ (join_sep div $ y:xs)
+
+join_container :: String -> String -> ([String] -> String)
+join_container begin end xs = begin ++ (join xs) ++ end
+
+join_sep_container :: String -> String -> String -> ([String] -> String)
+join_sep_container begin end div xs = begin ++ (join_sep div xs) ++ end
