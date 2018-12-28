@@ -44,6 +44,8 @@ module Compile
 
 import Debug
 import Utilities
+import Translator
+import TranslatorLibrary
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -56,15 +58,11 @@ import Utilities
 %///////////////////////////////////////////////
 \begin{code}
 
-type SourceCode = String
-type TransCode  = String
-type TargetCode = String
-
 compile :: FilePath -> [FilePath] -> IO ()
 compile fp_trans fp_srcs = do
     putStrLn $ "compiling translator: " ++ fp_trans
     transcode <- readFile fp_trans
-    trans <- compile_translator fp_trans
+    trans <- compile_translator transcode
     foldl (>>) (putStr "") $
         map (\fp_src -> do
             putStrLn $ "compiling source: " ++ fp_src
@@ -84,34 +82,9 @@ compile fp_trans fp_srcs = do
 %///////////////////////////////////////////////
 \begin{code}
 
-data Translator = Translator
-    { trans_blocks           :: [Block]
-    , trans_root_block       :: Block
-    , trans_convert_filepath :: FilePath -> FilePath }
-
-data Block = Block
-    { block_title     :: String
-    , block_children  :: [BlockChild]
-    , block_format    :: [TargetCode] -> TargetCode
-    , block_does_nest :: Bool }
-
-data BlockChild
-    = ChildCode  SourceCode
-    | ChildBlock Block
-
-instance Show Block where
-    show block
-        = "{ " ++ (block_title block) ++ " : "
-        ++ (show $ reverse $ block_children block) ++ " }"
-
-instance Show BlockChild where
-    show child = case child of
-        ChildCode x -> "\"" ++ x ++ "\""
-        ChildBlock x -> show x
-
 compile_translator :: TransCode -> IO Translator
 compile_translator transcode = -- TODO: implementation
-    return trans_example
+    return $ get_translator transcode
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -124,120 +97,6 @@ compile_translator transcode = -- TODO: implementation
 %///////////////////////////////////////////////
 \begin{code}
 
--- title children format nest
-
-make_block :: String -> ([TargetCode] -> TargetCode) -> Bool -> Block
-make_block title block_format does_nest = Block title [] block_format does_nest
-
-join_comment :: ([TargetCode] -> TargetCode)
-join_comment _ = ""
-
-join_span :: String -> ([TargetCode] -> TargetCode)
-join_span classname = join_container
-    ("<span class=\"" ++ classname ++ "\">") ("</span>")
-
-join_div :: String -> ([TargetCode] -> TargetCode)
-join_div classname = join_container
-    ("<div class=\"" ++ classname ++ "\">") ("</div>\n")
-
-join_tag_class :: String -> String -> ([TargetCode] -> TargetCode)
-join_tag_class tag classname = join_container
-    ("<" ++ tag ++ " class=\"" ++ classname ++ "\">") ("</" ++ tag ++ ">")
-
-join_tag_attr :: String -> String -> ([TargetCode] -> TargetCode)
-join_tag_attr tag_begin tag_end = join_container
-    ("<" ++ tag_begin ++ ">") ("</" ++ tag_end ++ ">")
-
-join_tag :: String -> ([TargetCode] -> TargetCode)
-join_tag tag = join_container ("<" ++ tag ++ ">") ("</" ++ tag ++ ">")
-
-join_js :: ([TargetCode] -> TargetCode)
-join_js [x] = "<script type=\"text/javascript\">" ++ x ++ "</script>" 
-
-join_js_src :: ([TargetCode] -> TargetCode)
-join_js_src [x] = "<script type=\"text/javascript\" src=\""
-                  ++ x ++ "\"></script>"
-
-join_css :: ([TargetCode] -> TargetCode)
-join_css [x] = "<style type=\"text/css\">" ++ x ++ "</style>" 
-
-join_css_src :: ([TargetCode] -> TargetCode)
-join_css_src [x] = "<link rel=\"stylesheet\" type=\"text/css\" href=\""
-                   ++ x ++ "\">"
-
-join_html_body :: ([TargetCode] -> TargetCode)
-join_html_body ls =
-    let helper :: [TargetCode] -> TargetCode
-        helper [] = ""
-        helper (x:xs) = x ++ helper xs
-    in "<body>\n" ++ (helper ls) ++ "\n</body>"
-
-
-join_inline_math :: ([TargetCode] -> TargetCode)
-join_inline_math [x] = "$$$$$" ++ x ++ "$$$$$"
-
-join_block_math :: ([TargetCode] -> TargetCode)
-join_block_math [x] = "$$$$$$$$$$" ++ x ++ "$$$$$$$$$$"
-
-join_row :: ([TargetCode] -> TargetCode)
-join_row tgtcode =
-    let helper :: [TargetCode] -> TargetCode
-        helper ls = case ls of
-            [] -> ""
-            (x:xs) -> "<td>" ++ x ++ "</td>" ++ helper xs
-    in "<tr class=\"row\">" ++ helper tgtcode ++ "</tr>"
-
-join_hrow :: ([TargetCode] -> TargetCode)
-join_hrow tgtcode =
-    let helper :: [TargetCode] -> TargetCode
-        helper ls = case ls of
-            [] -> ""
-            (x:xs) -> "<th>" ++ x ++ "</th>" ++ helper xs
-    in "<tr class=\"hrow\">" ++ helper tgtcode ++ "</tr>"
-
-join_image :: ([TargetCode] -> TargetCode)
-join_image [src,alt] = "<img src=\"" ++ src ++ "\" alt=\"" ++ alt ++ "\">"
-join_image [src] = "<img src=\"" ++ src ++ "\">"
-
-trans_example = Translator
-    ( -- scopes
-        [ make_block "--"       join_comment                         False
-        
-        , make_block "head"     (join_tag "head")                    True
-
-        , make_block "js-src"   join_js_src                          False
-        , make_block "js"       join_js                              False
-        , make_block "css-src"  join_css_src                         False
-        , make_block "css"      join_css                             False
-        , make_block "title"    (join_tag "title")                   False
-
-        , make_block "body"     join_html_body                       True
-        
-        , make_block "#####"    (join_div  "header-5")               True
-        , make_block "####"     (join_div  "header-4")               True
-        , make_block "###"      (join_div  "header-3")               True
-        , make_block "##"       (join_div  "header-2")               True
-        , make_block "#"        (join_div  "header-1")               True
-        , make_block "p"        (join_div "paragraph")               True
-        , make_block "$$"       join_block_math                      False
-        , make_block "$"        join_inline_math                     False
-        , make_block "```"      (join_tag_class "pre" "block-code")  False
-        , make_block "`"        (join_span "inline-code")            False
-        , make_block "img"      join_image                           False
-        , make_block ">"        (join_div "block-quote")             True
-        , make_block "-"        (join_div "line-bullet")             True
-        , make_block "*"        (join_span "inline-bold")            True
-        , make_block "_"        (join_span "inline-italic")          True
-        , make_block "~"        (join_span "inline-strike")          True
-
-        , make_block "table"    (join_tag_class "table" "table")     True
-        , make_block "hr"       join_hrow                            True
-        , make_block "tr"       join_row                             True
-        ] )
-    ( -- root scope
-        make_block "root" (join_tag_attr "!DOCTYPE html><html" "html") True )
-    ( -- convert filepath
-        \fp -> fp ++ ".html" )
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
