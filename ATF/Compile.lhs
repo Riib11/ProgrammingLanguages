@@ -157,7 +157,8 @@ sourcecode_to_blocktree trans sourcecode =
             let helper :: [Block] -> (Block, SourceCode)
                 helper blocks = case blocks of
                     -- none of blocks matched
-                    [] -> error $ "no block title found at: " ++ srccode
+                    [] -> error $ "no block title found at: "
+                                  ++ (show $ (take 20 srccode) ++ " ...")
                     -- check if srccode starts with the scope's title
                     (b:bs) -> case srccode `beheaded_by` (block_title b) of
                         -- this scope matches

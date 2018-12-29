@@ -15,7 +15,7 @@ html {
     margin: 0px;
     padding: 0px;
 
-    background-color: grey;
+    background-color: rgb(200,200,200);
 }
 
 body {
@@ -121,24 +121,47 @@ body {
     margin-bottom: 50px;
     font-family: menlo;
     font-size: 11pt;
-    padding-left: 20px;
+    width: 750px;
+    margin-left: -100px;
+    
+    padding-left: 100px;
+    padding-right: 50px;
+    
     padding-top: 20px;
     padding-bottom: 20px;
+
     overflow-x: scroll;
     background-color: black;
     color: white;
 }
 
-.inline-code {
+.block-code::selection {
+    background-color: #C000C0;
+}
 
+.inline-code {
+    font-family: menlo;
+    font-size: 10pt;
 }
 
 .image {
-
+    max-width: 600px;
+    margin: auto;
+    margin-top: 40px;
+    margin-bottom: 40px;
 }
 
 .figure {
+    margin-top: 50px;
+    margin-bottom: 50px;
+}
 
+.figure img {
+    max-width: 600px;
+}
+
+.figure div {
+    margin-top: 15px;
 }
 
 .block-quote {
@@ -162,19 +185,19 @@ body {
 }
 
 .bold {
-
+    font-weight: bold;
 }
 
 .italic {
-
+    font-style: italic;
 }
 
 .smallcaps {
-
+    font-variant: small-caps;
 }
 
 .strike {
-
+    text-decoration: line-through;
 }
 
 .table {
@@ -195,4 +218,19 @@ body {
 
 .foot {
     padding-bottom: 100px;
+}
+
+.bibliography {
+    margin-top: 50px;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+.bib-title {
+    font-size: 18pt;
+    margin-bottom: 20px;
+}
+
+.bib-item {
+    margin-bottom: 10px;
 }

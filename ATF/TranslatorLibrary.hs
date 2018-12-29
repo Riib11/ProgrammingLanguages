@@ -152,7 +152,7 @@ trans_hypaper_to_html =
             ++ "\n<head>"
             ++ "<link rel=\"stylesheet\" type=\"text/css\" href=\"hypaper.css\">"
             ++ "<script type=\"text/javascript\" src=\"hypaper.js\"></script>"
-            ++ "<script type=\"text/javascript\" src=\"https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js\" async>"
+            ++ "<script type=\"text/javascript\" src=\"https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js\" async></script>"
             ++ "<script type=\"text/x-mathjax-config\">MathJax.Hub.Config({ extensions: [\"tex2jax.js\"], jax: [\"input/TeX\", \"output/HTML-CSS\"], tex2jax: { inlineMath: [ ['$<<','>>$'] ], displayMath: [ ['$$<<','>>$$'] ], processEscapes: false }, \"HTML-CSS\": { fonts: [\"TeX\"] } });</script>"
             ++ "\n</head>"
             ++ "\n</html>"
@@ -172,16 +172,17 @@ trans_hypaper_to_html =
         join_subsection = join_div "subsection"
         join_section = join_div "section"
         join_paragraph = join_div "paragraph"
-        join_inline_math [x] = join_div "inline-math"
+        join_inline_math [x] = join_span "inline-math"
             $ ["$<<" ++ x ++ ">>$"]
         join_block_math  [x] = join_div "block-math"
             $ ["$$<<" ++ x ++ ">>$$"]
         join_block_code  = join_tag_class "pre" "block-code"
         join_inline_code = join_span "inline-code"
-        join_image [src] = "<img src=\"" ++ src ++ "\">"
-        join_image [src, alt] =
-            "<img src=\"" ++ src ++ "\" alt=\"" ++ alt ++ "\">"
-        join_figure [src,caption] = join_div "figure"
+        join_image [src] = join_tag_class "center" "image"
+            ["<img src=\"" ++ src ++ "\">"]
+        join_image [src, alt] = join_tag_class "center" "image"
+            ["<img src=\"" ++ src ++ "\" alt=\"" ++ alt ++ "\">"]
+        join_figure [src, caption] = join_tag_class "center" "figure"
             ["<img src=\"" ++ src ++ "\">", "<div>" ++ caption ++ "</div>"]
         join_inline_quote = join_span "inline-quote"
         join_block_quote  = join_div "block-quote"
@@ -196,12 +197,15 @@ trans_hypaper_to_html =
         join_smallcaps = join_span "smallcaps"
         join_strike    = join_span "strike"
         join_table     = join_tag_class "table" "table"
-        join_hrow xs   = "<tr class=\"table-hrow\""
-            ++ (foldl (\x y -> x ++ "<th>" ++ y ++ "</th>") "" xs) ++ "</tr>"
-        join_row xs    = "<tr class=\"table-row\""
-            ++ (foldl (\x y -> x ++ "<td>" ++ y ++ "</td>") "" xs) ++ "</tr>"
+        join_hrow xs   = join_tag_class "tr" "table-hrow"
+            $ map (\x -> join_tag "th" [x]) xs
+        join_row xs   = join_tag_class "tr" "table-row"
+            $ map (\x -> join_tag "tr" [x]) xs
         -- foot
         join_foot = join_div "foot"
+        join_bibliography xs = join_div "bibliography"
+            $ (join_div "bib-title" ["Bibliography"] ) : xs
+        join_bibitem = join_div "bib-item"
     in Translator
         ( -- scopes
             --------------------
@@ -211,11 +215,11 @@ trans_hypaper_to_html =
             --------------------
             -- head
             , make_block "head"     join_head     True
-            , make_block "title"    join_title    False
-            , make_block "subtitle" join_subtitle False
-            , make_block "author"   join_author   False
-            , make_block "date"     join_date     False
-            , make_block "abstract" join_abstract False
+            , make_block "title"    join_title    True
+            , make_block "subtitle" join_subtitle True
+            , make_block "author"   join_author   True
+            , make_block "date"     join_date     True
+            , make_block "abstract" join_abstract True
             --------------------
             -- body
             , make_block "body" join_body True
@@ -231,8 +235,8 @@ trans_hypaper_to_html =
             , make_block "```" join_block_code  False
             , make_block "`"   join_inline_code False
             -- image
-            , make_block "image"  join_image  False
-            , make_block "figure" join_figure False
+            , make_block "image"  join_image  True
+            , make_block "figure" join_figure True
             -- quote
             , make_block "''" join_inline_quote True
             , make_block ">"  join_block_quote  True
@@ -253,6 +257,8 @@ trans_hypaper_to_html =
             --------------------
             -- foot
             , make_block "foot" join_foot True
+            , make_block "bibliography" join_bibliography True
+            , make_block "bib-item" join_bibitem True
             ] )
         ( -- root scope
             make_block "root" (join_root) True )
