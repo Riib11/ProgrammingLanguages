@@ -45,6 +45,7 @@ module Compile
 import Debug
 import Utilities
 import Translator
+import TranslatorInterpreter
 import TranslatorLibrary
 
 \end{code}
@@ -62,7 +63,7 @@ compile :: FilePath -> [FilePath] -> IO ()
 compile fp_trans fp_srcs = do
     putStrLn $ "compiling translator: " ++ fp_trans
     transcode <- readFile fp_trans
-    trans <- compile_translator transcode
+    trans <- interpret_translator transcode
     foldl (>>) (putStr "") $
         map (\fp_src -> do
             putStrLn $ "compiling source: " ++ fp_src
@@ -70,21 +71,6 @@ compile fp_trans fp_srcs = do
             tgtcode <- compile_sourcecode trans srccode
             writeFile (trans_convert_filepath trans fp_src) tgtcode)
         fp_srcs
-
-\end{code}
-%\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-
-%-------------------------------------------------------------------------------
-\section{Compiling Translator}
-
-% TODO: description
-
-%///////////////////////////////////////////////
-\begin{code}
-
-compile_translator :: TransCode -> IO Translator
-compile_translator transcode = -- TODO: implementation
-    return $ get_translator transcode
 
 \end{code}
 %\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
